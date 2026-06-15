@@ -1,6 +1,18 @@
 #include "Renderer.h"
 #include "Walnut/Random.h"
 
+namespace Utils
+{
+	static uint32_t ConvertToRGBA(const glm::vec4& color)
+	{
+		uint8_t r = static_cast<uint8_t>(color.r * 255.0f);
+		uint8_t g = static_cast<uint8_t>(color.g * 255.0f);
+		uint8_t b = static_cast<uint8_t>(color.b * 255.0f);
+		uint8_t a = static_cast<uint8_t>(color.a * 255.0f);
+		uint32_t result = (a << 24) | (b << 16) | (g << 8) | r;
+		return result;
+	}
+}
 
 void Renderer::OnResize(uint32_t width, uint32_t height)
 {
@@ -33,7 +45,10 @@ void Renderer::Render()
 		{
 			glm::vec2 coord = { (float)i / (float)m_FinalImage->GetWidth(), (float)j / (float)m_FinalImage->GetHeight() };
 			coord = coord * 2.0f - 1.0f; //convert -1 to 1 range btw not the final sol
-			m_ImageData[j * m_FinalImage->GetWidth() + i] = PerPixel(coord);
+			
+			glm::vec4 color = PerPixel(coord);
+			color = glm::clamp(color, glm::vec4(0.0f), glm::vec4(1.0f));
+			m_ImageData[j * m_FinalImage->GetWidth() + i] = Utils::ConvertToRGBA(color);
 
 			//m_ImageData[i] = 0xFFFF00FF; //abgr format first 2 are alpha channel, next two are blue channel then next two are green channel and finally last 2 remaining are red channel;
 			//m_ImageData[i] = Walnut::Random::UInt();
@@ -57,14 +72,14 @@ void Renderer::Render()
 //
 //Color packing
 
-uint32_t Renderer::PerPixel(glm::vec2 coord)
+glm::vec4 Renderer::PerPixel(glm::vec2 coord)
 {
 	glm::vec3 rayOrigin(0.0f, 0.0f, 2.0f);
 	glm::vec3 rayDirection(coord.x, coord.y, -1.0f);
-	glm::vec3 sphereCenter(0.0f);
+	//glm::vec3 sphereCenter(0.0f);
 
 	float radius = 0.5f;
-	rayDirection = glm::normalize(rayDirection);
+	//rayDirection = glm::normalize(rayDirection);
 
 	//ray eq -> p(t) = rayOrigin + t * rayDirection
 	//sphere eq -> |spherecenter - sphereradius|^2 = r^2
@@ -78,40 +93,49 @@ uint32_t Renderer::PerPixel(glm::vec2 coord)
 	// r = radius
 	// t = hit radius
 
-	glm::vec3 oc = rayOrigin - sphereCenter; //oc is the vector from the ray origin to the sphere center
+	//glm::vec3 oc = rayOrigin - sphereCenter; //oc is the vector from the ray origin to the sphere center
 
 	float a = glm::dot(rayDirection, rayDirection); //ray origin
-	float b = 2.0f * glm::dot(oc, rayDirection); //ray direction
-	float c = glm::dot(oc, oc) - radius * radius;
+	float b = 2.0f * glm::dot(rayOrigin, rayDirection); //ray direction
+	//float b = 2.0f * glm::dot(oc, rayDirection); //ray direction
+	//float c = glm::dot(oc, oc) - radius * radius;
+	float c = glm::dot(rayOrigin, rayOrigin) - radius * radius; //since we are assuming the sphere center is at the origin we can simplify the eq to this
+
+
 
 	//quad eq formual discriminant = b^2 - 4ac
 	float discriminant = b * b - 4.0f * a * c;
 
 	if (discriminant < 0.0f)
-		return 0xff000000;
+		return glm::vec4(0,0,0,1);
 
-	float t = (-b - sqrt(discriminant)) / (2.0f * a);
-	if(t<0.0f)
-		return 0xff000000;
+	float t0 = (-b + glm::sqrt(discriminant)) / (2.0f * a);
+	float t1 = (-b - glm::sqrt(discriminant)) / (2.0f * a);
+	if(t0<0.0f)
+		return glm::vec4(0,0,0,1);
 
-	glm::vec3 hitPoint = rayOrigin + t * rayDirection;//comp hit poiint
-	glm::vec3 normal = glm::normalize(hitPoint - sphereCenter);//comp normal
+	glm::vec3 hitPoint0 = rayOrigin + t0 * rayDirection;//comp hit poiint
+	glm::vec3 hitPoint1 = rayOrigin + t1 * rayDirection;//comp hit poiint
+	//glm::vec3 normal = glm::normalize(hitPoint - sphereCenter);//comp normal
 
-	glm::vec3 lightDir = glm::normalize(glm::vec3(-1.0f, -1.0f, -1.0f));
-	float intensity = glm::max(glm::dot(normal, -lightDir), 0.0f); // this is N * L classic lambertian diffuse lighting equation
-	float ambient = 0.1f;
-	float lighting = glm::min(ambient + intensity, 1.0f);
-	glm::vec3 sphereColor(1.0f, 0.2f, 0.2f);
+	//glm::vec3 lightDir = glm::normalize(glm::vec3(-1.0f, -1.0f, -1.0f));
+	//float intensity = glm::max(glm::dot(normal, -lightDir), 0.0f); // this is N * L classic lambertian diffuse lighting equation
+	//float ambient = 0.1f;
+	//float lighting = glm::min(ambient + intensity, 1.0f);
+	glm::vec3 sphereColor(1.0f, 0.0f, 1.0f);
+	return glm::vec4(sphereColor, 1.0f); //abgr format
 
-	glm::vec3 viewDir = glm::normalize(rayOrigin - hitPoint);
-	glm::vec3 reflectDir = glm::reflect(lightDir, normal);
-	float specular = pow(glm::max(glm::dot(viewDir, reflectDir), 0.0f), 8.0f); // specular highlight with shininess of 8
-	glm::vec3 color = sphereColor * lighting + glm::vec3(specular); // apply lighting to the sphere color
-	color = glm::clamp(color, glm::vec3(0.0f), glm::vec3(1.0f)); // clamp color to the range of 0 to 1
+	//glm::vec3 viewDir = glm::normalize(rayOrigin - hitPoint);
+	//glm::vec3 reflectDir = glm::reflect(lightDir, normal);
+	//float specular = pow(glm::max(glm::dot(viewDir, reflectDir), 0.0f), 8.0f); // specular highlight with shininess of 8
+	//glm::vec3 color = sphereColor * lighting + glm::vec3(specular); // apply lighting to the sphere color
+	//color = glm::clamp(color, glm::vec3(0.0f), glm::vec3(1.0f)); // clamp color to the range of 0 to 1
 
-	uint8_t rCol = (uint8_t)(color.r * 255.0f);
-	uint8_t gCol = (uint8_t)(color.g * 255.0f);
-	uint8_t bCol = (uint8_t)(color.b * 255.0f);
-	return 0xff000000 | (bCol << 16) | (gCol << 8) | rCol; //abgr format
+	//uint8_t rCol = (uint8_t)(color.r * 255.0f);
+	//uint8_t gCol = (uint8_t)(color.g * 255.0f);
+	//uint8_t bCol = (uint8_t)(color.b * 255.0f);
+	//return glm::vec4(rCol / 255.0f, gCol / 255.0f, bCol / 255.0f, 1.0f); //abgr format
 	//return 0xff000000 | (g << 8) | r;
+
+	
 }

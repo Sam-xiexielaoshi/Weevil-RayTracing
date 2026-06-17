@@ -16,7 +16,7 @@ The current renderer draws a shaded sphere in an ImGui viewport and demonstrates
 
 - Windows
 - Visual Studio 2022 (C++ workload)
-- Vulkan SDK (available through `IncludeDir.VulkanSDK` in Premake/Walnut setup)
+- Vulkan SDK (required by Walnut)
 - Git (with submodule support)
 
 ## Getting Started

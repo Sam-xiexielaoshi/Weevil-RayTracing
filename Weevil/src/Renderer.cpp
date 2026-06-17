@@ -74,7 +74,7 @@ void Renderer::Render()
 
 glm::vec4 Renderer::PerPixel(glm::vec2 coord)
 {
-	glm::vec3 rayOrigin(0.0f, 0.0f, 2.0f);
+	glm::vec3 rayOrigin(0.0f, 0.0f, 1.0f);
 	glm::vec3 rayDirection(coord.x, coord.y, -1.0f);
 	//glm::vec3 sphereCenter(0.0f);
 
@@ -110,19 +110,19 @@ glm::vec4 Renderer::PerPixel(glm::vec2 coord)
 		return glm::vec4(0,0,0,1);
 
 	float t0 = (-b + glm::sqrt(discriminant)) / (2.0f * a);
-	float t1 = (-b - glm::sqrt(discriminant)) / (2.0f * a);
+	float closestT = (-b - glm::sqrt(discriminant)) / (2.0f * a);
 	if(t0<0.0f)
 		return glm::vec4(0,0,0,1);
 
-	glm::vec3 hitPoint0 = rayOrigin + t0 * rayDirection;//comp hit poiint
-	glm::vec3 hitPoint1 = rayOrigin + t1 * rayDirection;//comp hit poiint
-	//glm::vec3 normal = glm::normalize(hitPoint - sphereCenter);//comp normal
+	glm::vec3 hitPoint = rayOrigin + closestT * rayDirection;//comp hit poiint
+	glm::vec3 normal = glm::normalize(hitPoint);//comp normal
 
-	//glm::vec3 lightDir = glm::normalize(glm::vec3(-1.0f, -1.0f, -1.0f));
-	//float intensity = glm::max(glm::dot(normal, -lightDir), 0.0f); // this is N * L classic lambertian diffuse lighting equation
+	glm::vec3 lightDir = glm::normalize(glm::vec3(-1.0f, -1.0f, -1.0f));
+	float intensity = glm::max(glm::dot(normal, -lightDir), 0.0f); // this is N * L classic lambertian diffuse lighting equation
 	//float ambient = 0.1f;
 	//float lighting = glm::min(ambient + intensity, 1.0f);
 	glm::vec3 sphereColor(1.0f, 0.0f, 1.0f);
+	sphereColor = normal * intensity;
 	return glm::vec4(sphereColor, 1.0f); //abgr format
 
 	//glm::vec3 viewDir = glm::normalize(rayOrigin - hitPoint);

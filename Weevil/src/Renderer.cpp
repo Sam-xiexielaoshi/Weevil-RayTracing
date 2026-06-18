@@ -36,17 +36,21 @@ void Renderer::OnResize(uint32_t width, uint32_t height)
 	m_ImageData = new uint32_t[width * height];
 }
 
-void Renderer::Render()
+void Renderer::Render(const Camera& camera)
 {
+	const glm::vec3& rayOrigin = camera.GetPosition(); 
+
+	Ray ray;
+	ray.Origin = camera.GetPosition();
+
 	for (uint32_t j = 0; j < m_FinalImage->GetHeight(); j++)
 	{
 		// Rendering code goes here rendereing every pixel 
 		for (uint32_t i = 0; i < m_FinalImage->GetWidth(); i++)
 		{
-			glm::vec2 coord = { (float)i / (float)m_FinalImage->GetWidth(), (float)j / (float)m_FinalImage->GetHeight() };
-			coord = coord * 2.0f - 1.0f; //convert -1 to 1 range btw not the final sol
+			ray.Direction = camera.GetRayDirections()[i + j * m_FinalImage->GetWidth()];
 			
-			glm::vec4 color = PerPixel(coord);
+			glm::vec4 color = TraceRay(ray);
 			color = glm::clamp(color, glm::vec4(0.0f), glm::vec4(1.0f));
 			m_ImageData[j * m_FinalImage->GetWidth() + i] = Utils::ConvertToRGBA(color);
 
@@ -72,12 +76,8 @@ void Renderer::Render()
 //
 //Color packing
 
-glm::vec4 Renderer::PerPixel(glm::vec2 coord)
+glm::vec4 Renderer::TraceRay(const Ray& ray)
 {
-	glm::vec3 rayOrigin(0.0f, 0.0f, 1.0f);
-	glm::vec3 rayDirection(coord.x, coord.y, -1.0f);
-	//glm::vec3 sphereCenter(0.0f);
-
 	float radius = 0.5f;
 	//rayDirection = glm::normalize(rayDirection);
 
@@ -95,11 +95,11 @@ glm::vec4 Renderer::PerPixel(glm::vec2 coord)
 
 	//glm::vec3 oc = rayOrigin - sphereCenter; //oc is the vector from the ray origin to the sphere center
 
-	float a = glm::dot(rayDirection, rayDirection); //ray origin
-	float b = 2.0f * glm::dot(rayOrigin, rayDirection); //ray direction
+	float a = glm::dot(ray.Direction, ray.Direction); //ray origin
+	float b = 2.0f * glm::dot(ray.Origin, ray.Direction); //ray direction
 	//float b = 2.0f * glm::dot(oc, rayDirection); //ray direction
 	//float c = glm::dot(oc, oc) - radius * radius;
-	float c = glm::dot(rayOrigin, rayOrigin) - radius * radius; //since we are assuming the sphere center is at the origin we can simplify the eq to this
+	float c = glm::dot(ray.Origin, ray.Origin) - radius * radius; //since we are assuming the sphere center is at the origin we can simplify the eq to this
 
 
 
@@ -114,7 +114,7 @@ glm::vec4 Renderer::PerPixel(glm::vec2 coord)
 	if(t0<0.0f)
 		return glm::vec4(0,0,0,1);
 
-	glm::vec3 hitPoint = rayOrigin + closestT * rayDirection;//comp hit poiint
+	glm::vec3 hitPoint = ray.Origin + closestT * ray.Direction;//comp hit poiint
 	glm::vec3 normal = glm::normalize(hitPoint);//comp normal
 
 	glm::vec3 lightDir = glm::normalize(glm::vec3(-1.0f, -1.0f, -1.0f));

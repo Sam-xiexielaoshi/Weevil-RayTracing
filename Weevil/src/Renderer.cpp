@@ -92,15 +92,14 @@ glm::vec4 Renderer::TraceRay(const Ray& ray)
 	// b = ray direction 
 	// r = radius
 	// t = hit radius
-
-	//glm::vec3 oc = rayOrigin - sphereCenter; //oc is the vector from the ray origin to the sphere center
+	glm::vec3 sphereCenter(-0.5f, 0.0f, 0.0f);
+	glm::vec3 origin = ray.Origin - sphereCenter; //origin is the vector from the ray origin to the sphere center
 
 	float a = glm::dot(ray.Direction, ray.Direction); //ray origin
-	float b = 2.0f * glm::dot(ray.Origin, ray.Direction); //ray direction
+	float b = 2.0f * glm::dot(origin, ray.Direction); //ray direction
 	//float b = 2.0f * glm::dot(oc, rayDirection); //ray direction
 	//float c = glm::dot(oc, oc) - radius * radius;
-	float c = glm::dot(ray.Origin, ray.Origin) - radius * radius; //since we are assuming the sphere center is at the origin we can simplify the eq to this
-
+	float c = glm::dot(origin, origin) - radius * radius; //since we are assuming the sphere center is at the origin we can simplify the eq to this
 
 
 	//quad eq formual discriminant = b^2 - 4ac
@@ -109,12 +108,12 @@ glm::vec4 Renderer::TraceRay(const Ray& ray)
 	if (discriminant < 0.0f)
 		return glm::vec4(0,0,0,1);
 
-	float t0 = (-b + glm::sqrt(discriminant)) / (2.0f * a);
 	float closestT = (-b - glm::sqrt(discriminant)) / (2.0f * a);
-	if(t0<0.0f)
-		return glm::vec4(0,0,0,1);
+	float t0 = (-b + glm::sqrt(discriminant)) / (2.0f * a);
+	/*if(t0<0.0f)
+		return glm::vec4(0,0,0,1);*/
 
-	glm::vec3 hitPoint = ray.Origin + closestT * ray.Direction;//comp hit poiint
+	glm::vec3 hitPoint = origin + closestT * ray.Direction;//comp hit poiint
 	glm::vec3 normal = glm::normalize(hitPoint);//comp normal
 
 	glm::vec3 lightDir = glm::normalize(glm::vec3(-1.0f, -1.0f, -1.0f));
@@ -122,7 +121,7 @@ glm::vec4 Renderer::TraceRay(const Ray& ray)
 	//float ambient = 0.1f;
 	//float lighting = glm::min(ambient + intensity, 1.0f);
 	glm::vec3 sphereColor(1.0f, 0.0f, 1.0f);
-	sphereColor = normal * intensity;
+	sphereColor *= intensity;
 	return glm::vec4(sphereColor, 1.0f); //abgr format
 
 	//glm::vec3 viewDir = glm::normalize(rayOrigin - hitPoint);

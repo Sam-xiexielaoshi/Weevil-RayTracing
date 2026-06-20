@@ -36,7 +36,7 @@ void Renderer::OnResize(uint32_t width, uint32_t height)
 	m_ImageData = new uint32_t[width * height];
 }
 
-void Renderer::Render(const Camera& camera)
+void Renderer::Render(const Scene& scene, const Camera& camera)
 {
 	const glm::vec3& rayOrigin = camera.GetPosition(); 
 
@@ -50,7 +50,7 @@ void Renderer::Render(const Camera& camera)
 		{
 			ray.Direction = camera.GetRayDirections()[i + j * m_FinalImage->GetWidth()];
 			
-			glm::vec4 color = TraceRay(ray);
+			glm::vec4 color = TraceRay(scene, ray);
 			color = glm::clamp(color, glm::vec4(0.0f), glm::vec4(1.0f));
 			m_ImageData[j * m_FinalImage->GetWidth() + i] = Utils::ConvertToRGBA(color);
 
@@ -76,11 +76,8 @@ void Renderer::Render(const Camera& camera)
 //
 //Color packing
 
-glm::vec4 Renderer::TraceRay(const Ray& ray)
+glm::vec4 Renderer::TraceRay(const Scene& scene, const Ray& ray)
 {
-	float radius = 0.5f;
-	//rayDirection = glm::normalize(rayDirection);
-
 	//ray eq -> p(t) = rayOrigin + t * rayDirection
 	//sphere eq -> |spherecenter - sphereradius|^2 = r^2
 	//sub the ray eq into the sphere eq and we get -> |(rayOrigin + t * rayDirection) - sphereCenter|^2 = r^2
@@ -92,49 +89,47 @@ glm::vec4 Renderer::TraceRay(const Ray& ray)
 	// b = ray direction 
 	// r = radius
 	// t = hit radius
-	glm::vec3 sphereCenter(-0.5f, 0.0f, 0.0f);
-	glm::vec3 origin = ray.Origin - sphereCenter; //origin is the vector from the ray origin to the sphere center
+	if(scene.Spheres.size()==0)
+		return glm::vec4(0, 0, 0, 1);
 
-	float a = glm::dot(ray.Direction, ray.Direction); //ray origin
-	float b = 2.0f * glm::dot(origin, ray.Direction); //ray direction
-	//float b = 2.0f * glm::dot(oc, rayDirection); //ray direction
-	//float c = glm::dot(oc, oc) - radius * radius;
-	float c = glm::dot(origin, origin) - radius * radius; //since we are assuming the sphere center is at the origin we can simplify the eq to this
+	const Sphere* closestSphere = nullptr;
+	float hitDistance = std::numeric_limits<float>::max();
 
+	for (const Sphere& sphere : scene.Spheres)
+	{
+		glm::vec3 origin = ray.Origin - sphere.Position; //origin is the vector from the ray origin to the sphere center
 
-	//quad eq formual discriminant = b^2 - 4ac
-	float discriminant = b * b - 4.0f * a * c;
+		float a = glm::dot(ray.Direction, ray.Direction); //ray origin
+		float b = 2.0f * glm::dot(origin, ray.Direction); //ray direction
+		float c = glm::dot(origin, origin) - sphere.Radius * sphere.Radius; //since we are assuming the sphere center is at the origin we can simplify the eq to this
+		//quad eq formual discriminant = b^2 - 4ac
+		float discriminant = b * b - 4.0f * a * c;
 
-	if (discriminant < 0.0f)
-		return glm::vec4(0,0,0,1);
+		if (discriminant < 0.0f)
+			continue;
 
-	float closestT = (-b - glm::sqrt(discriminant)) / (2.0f * a);
-	float t0 = (-b + glm::sqrt(discriminant)) / (2.0f * a);
-	/*if(t0<0.0f)
-		return glm::vec4(0,0,0,1);*/
+		//float t0 = (-b + glm::sqrt(discriminant)) / (2.0f * a);
+		float closestT = (-b - glm::sqrt(discriminant)) / (2.0f * a);
+		if(closestT < hitDistance && closestT > 0.0f)
+		{
+			hitDistance = closestT;
+			closestSphere = &sphere;
+		}
+	}
 
-	glm::vec3 hitPoint = origin + closestT * ray.Direction;//comp hit poiint
+	if (closestSphere == nullptr)
+		return glm::vec4(0, 0, 0, 1);
+
+	glm::vec3 origin = ray.Origin - closestSphere->Position; 
+
+	glm::vec3 hitPoint = origin + hitDistance * ray.Direction;//comp hit poiint
+
 	glm::vec3 normal = glm::normalize(hitPoint);//comp normal
 
 	glm::vec3 lightDir = glm::normalize(glm::vec3(-1.0f, -1.0f, -1.0f));
 	float intensity = glm::max(glm::dot(normal, -lightDir), 0.0f); // this is N * L classic lambertian diffuse lighting equation
-	//float ambient = 0.1f;
-	//float lighting = glm::min(ambient + intensity, 1.0f);
-	glm::vec3 sphereColor(1.0f, 0.0f, 1.0f);
+
+	glm::vec3 sphereColor = closestSphere->Albedo;
 	sphereColor *= intensity;
 	return glm::vec4(sphereColor, 1.0f); //abgr format
-
-	//glm::vec3 viewDir = glm::normalize(rayOrigin - hitPoint);
-	//glm::vec3 reflectDir = glm::reflect(lightDir, normal);
-	//float specular = pow(glm::max(glm::dot(viewDir, reflectDir), 0.0f), 8.0f); // specular highlight with shininess of 8
-	//glm::vec3 color = sphereColor * lighting + glm::vec3(specular); // apply lighting to the sphere color
-	//color = glm::clamp(color, glm::vec3(0.0f), glm::vec3(1.0f)); // clamp color to the range of 0 to 1
-
-	//uint8_t rCol = (uint8_t)(color.r * 255.0f);
-	//uint8_t gCol = (uint8_t)(color.g * 255.0f);
-	//uint8_t bCol = (uint8_t)(color.b * 255.0f);
-	//return glm::vec4(rCol / 255.0f, gCol / 255.0f, bCol / 255.0f, 1.0f); //abgr format
-	//return 0xff000000 | (g << 8) | r;
-
-	
 }

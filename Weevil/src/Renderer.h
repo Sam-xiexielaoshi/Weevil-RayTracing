@@ -18,9 +18,14 @@ public:
 
 	std::shared_ptr<Walnut::Image> GetFinalImage() const { return m_FinalImage; }
 private:
+	glm::vec4 PerPixel();//raygen
 	glm::vec4 TraceRay(const Scene& scene, const Ray& ray);
 private:
 	std::shared_ptr<Walnut::Image>m_FinalImage;
+
+	const Scene* m_ActiveScene = nullptr;
+	const Camera* m_ActiveCamera = nullptr;
+
 	uint32_t* m_ImageData = nullptr;
 
 };

@@ -46,13 +46,13 @@ glm::vec4 Renderer::PerPixel(uint32_t x, uint32_t y)
 
 	float multiplier = 1.0f;
 
-	int bounces = 2; //number of bounces for the ray
+	int bounces = 5; //number of bounces for the ray
 	for(int i = 0; i < bounces; i++)
 	{
 		Renderer::HitPayload payload = TraceRay(ray);
 		if (payload.HitDistance < 0.0f)
 		{
-			glm::vec3 skyColor = glm::vec3(0.0f, 0.0f, 0.0f); //light blue color for the sky
+			glm::vec3 skyColor = glm::vec3(0.6f, 0.7f, 0.9f); //light blue color for the sky
 			color += skyColor * multiplier;
 			break;
 		}
@@ -61,13 +61,16 @@ glm::vec4 Renderer::PerPixel(uint32_t x, uint32_t y)
 		float intensity = glm::max(glm::dot(payload.WorldNormal, -lightDir), 0.0f); // this is N * L classic lambertian diffuse lighting equation
 
 		const Sphere& sphere = m_ActiveScene->Spheres[payload.ObjectIndex];
-		glm::vec3 sphereColor = sphere.Albedo;
+		const Material& material = m_ActiveScene->Materials[sphere.MaterialIndex];
+
+		glm::vec3 sphereColor = material.Albedo;
 		sphereColor *= intensity;
 		color += sphereColor * multiplier;
-		multiplier *= 0.7f; //reduce the multiplier for the next bounce
+
+		multiplier *= 0.5f; //reduce the multiplier for the next bounce
 
 		ray.Origin = payload.WorldPosition + payload.WorldNormal * 0.0001f; //offset the origin to avoid self intersection
-		ray.Direction = glm::reflect(ray.Direction, payload.WorldNormal); //reflect the ray direction based on the normal
+		ray.Direction = glm::reflect(ray.Direction, payload.WorldNormal + material.Roughness * Walnut::Random::Vec3(-0.5f, 0.5f)); //reflect the ray direction based on the normal
 
 	}
 

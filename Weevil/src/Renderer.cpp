@@ -34,6 +34,9 @@ void Renderer::OnResize(uint32_t width, uint32_t height)
 
 	delete[] m_ImageData;
 	m_ImageData = new uint32_t[width * height];
+	
+	delete[] m_AccumulationData;
+	m_AccumulationData = new glm::vec4[width * height];
 }
 
 glm::vec4 Renderer::PerPixel(uint32_t x, uint32_t y)
@@ -82,19 +85,29 @@ void Renderer::Render(const Scene& scene, const Camera& camera)
 	m_ActiveScene = &scene;
 	m_ActiveCamera = &camera;
 
+	if (m_FrameIndex == 1)
+		memset(m_AccumulationData, 0, m_FinalImage->GetWidth() * m_FinalImage->GetHeight() * sizeof(glm::vec4));
+
 	for (uint32_t j = 0; j < m_FinalImage->GetHeight(); j++)
 	{
 		// Rendering code goes here rendereing every pixel 
 		for (uint32_t i = 0; i < m_FinalImage->GetWidth(); i++)
 		{
-			PerPixel(i, j);
-			
 			glm::vec4 color = PerPixel(i,j);
-			color = glm::clamp(color, glm::vec4(0.0f), glm::vec4(1.0f));
+			m_AccumulationData[j * m_FinalImage->GetWidth() + i] += color;
+
+			glm::vec4 accumulatedColor = m_AccumulationData[j * m_FinalImage->GetWidth() + i] / (float)m_FrameIndex;
+
+			color = glm::clamp(accumulatedColor, glm::vec4(0.0f), glm::vec4(1.0f));
 			m_ImageData[j * m_FinalImage->GetWidth() + i] = Utils::ConvertToRGBA(color);
 		}
 	}
 	m_FinalImage->SetData(m_ImageData);
+
+	if (m_Settings.Accumate)
+		m_FrameIndex++;
+	else
+		m_FrameIndex = 1;
 }
 
 Renderer::HitPayload Renderer::TraceRay(const Ray& ray)

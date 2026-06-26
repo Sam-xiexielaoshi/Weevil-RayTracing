@@ -1,5 +1,6 @@
 #include "Renderer.h"
 #include "Walnut/Random.h"
+#include <execution>
 
 namespace Utils
 {
@@ -37,6 +38,15 @@ void Renderer::OnResize(uint32_t width, uint32_t height)
 	
 	delete[] m_AccumulationData;
 	m_AccumulationData = new glm::vec4[width * height];
+
+	m_ImageHorizontalIterator.resize(width);
+	m_ImageVerticalIterator.resize(height);
+
+	for(uint32_t i =0; i < width; i++)
+		m_ImageHorizontalIterator[i] = i;
+
+	for(uint32_t i =0; i < height; i++)
+		m_ImageVerticalIterator[i] = i;
 }
 
 glm::vec4 Renderer::PerPixel(uint32_t x, uint32_t y)
@@ -131,12 +141,29 @@ void Renderer::Render(const Scene& scene, const Camera& camera)
 	if (m_FrameIndex == 1)
 		memset(m_AccumulationData, 0, m_FinalImage->GetWidth() * m_FinalImage->GetHeight() * sizeof(glm::vec4));
 
+#define MT 1
+#if MT
+	//~3m
+	std::for_each(std::execution::par, m_ImageVerticalIterator.begin(), m_ImageVerticalIterator.end(), [this](uint32_t j)
+		{
+			std::for_each(std::execution::par, m_ImageHorizontalIterator.begin(), m_ImageHorizontalIterator.end(), [this, j](uint32_t i)
+				{
+					glm::vec4 color = PerPixel(i, j);
+					m_AccumulationData[j * m_FinalImage->GetWidth() + i] += color;
+
+					glm::vec4 accumulatedColor = m_AccumulationData[j * m_FinalImage->GetWidth() + i] / (float)m_FrameIndex;
+
+					color = glm::clamp(accumulatedColor, glm::vec4(0.0f), glm::vec4(1.0f));
+					m_ImageData[j * m_FinalImage->GetWidth() + i] = Utils::ConvertToRGBA(color);
+				});
+		});
+#else
 	for (uint32_t j = 0; j < m_FinalImage->GetHeight(); j++)
 	{
 		// Rendering code goes here rendereing every pixel 
 		for (uint32_t i = 0; i < m_FinalImage->GetWidth(); i++)
 		{
-			glm::vec4 color = PerPixel(i,j);
+			glm::vec4 color = PerPixel(i, j);
 			m_AccumulationData[j * m_FinalImage->GetWidth() + i] += color;
 
 			glm::vec4 accumulatedColor = m_AccumulationData[j * m_FinalImage->GetWidth() + i] / (float)m_FrameIndex;
@@ -145,6 +172,8 @@ void Renderer::Render(const Scene& scene, const Camera& camera)
 			m_ImageData[j * m_FinalImage->GetWidth() + i] = Utils::ConvertToRGBA(color);
 		}
 	}
+#endif
+
 	m_FinalImage->SetData(m_ImageData);
 
 	if (m_Settings.Accumate)

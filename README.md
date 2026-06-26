@@ -39,6 +39,34 @@ The project currently focuses on a simple ray tracing pipeline rendered inside a
 - Surface normal calculation
 - Lambert diffuse shading
 
+## Roadmap
+
+- Multiple spheres and general scene object support
+- Camera controls for moving and rotating the view
+- Material system for diffuse, reflective, and emissive surfaces
+- Shadow rays and multiple light sources
+- Anti-aliasing via multi-sampling
+- Reflection and refraction support
+- Acceleration structures such as BVH for better performance
+- More robust scene management and serialization
+
+## Optimization Paths
+
+- Add bounding volume hierarchies to reduce intersection tests
+- Batch or parallelize pixel rendering where possible
+- Reduce per-frame allocations in the render loop
+- Cache immutable scene data instead of recomputing it every frame
+- Explore SIMD-friendly math and tighter data layouts for geometry and rays
+- Investigate GPU-backed or hybrid rendering paths if the project grows beyond CPU ray tracing
+
+## Troubleshooting
+
+- **Setup script fails:** Make sure Visual Studio 2022 is installed with the C++ desktop workload.
+- **Missing Vulkan SDK:** Install the Vulkan SDK and verify the environment variables are configured correctly.
+- **Submodules missing:** Re-clone the repository with `--recurse-submodules` or run `git submodule update --init --recursive`.
+- **Solution/project files not generated:** Re-run `scripts/Setup.bat` from the repository root.
+- **Build errors after pulling changes:** Regenerate project files and perform a clean rebuild.
+
 ## Notes
 
 - The current scene is intentionally simple and contains a single shaded sphere.

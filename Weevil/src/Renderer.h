@@ -14,6 +14,7 @@ public:
 	struct Settings
 	{
 		bool Accumate = true;
+		bool SlowRandom = true;
 	};
 public:
 	Renderer() = default;

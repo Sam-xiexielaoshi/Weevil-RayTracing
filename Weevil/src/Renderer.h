@@ -17,9 +17,10 @@ public:
 	{
 		bool Accumate = true;
 		bool SlowRandom = true;
-		float BloomThreshold = 0.5f;
+		float BloomThreshold = 1.0f;
 		bool ShowBloomBuffer = true;
-		int BloomRadius = 3;
+		int BloomRadius = 10;
+		float BloomStrength = 1.0f;
 
 	};
 public:
@@ -58,7 +59,8 @@ private:
 
 	void ExtractBrightPass();
 	void BlurHorizontal();
-	//void BlurVertical();
+	void BlurVertical();
+	void CombineBloom();
 
 	HitPayload TraceRay(const Ray& ray);
 	HitPayload ClosestHit(const Ray& ray, float hitDistance,int objectIndex);

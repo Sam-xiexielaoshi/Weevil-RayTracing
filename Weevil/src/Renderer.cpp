@@ -181,6 +181,8 @@ void Renderer::Bloom()
 {
 	ExtractBrightPass();
 	BlurHorizontal();
+	BlurVertical();
+	CombineBloom();
 }
 
 void Renderer::ToneMap()
@@ -195,14 +197,7 @@ void Renderer::ConvertToRGBA()
 {
 	ForEachPixel([this](uint32_t, uint32_t, uint32_t index)
 	{
-		glm::vec4 color;
-		if (m_Settings.ShowBloomBuffer)
-			color = m_BlurImage[index];
-		else
-			color = m_HDRImage[index];
-		color = glm::clamp(color,
-			glm::vec4(0.0f),
-			glm::vec4(1.0f));
+		glm::vec4 color = glm::clamp(m_HDRImage[index], glm::vec4(0.0f), glm::vec4(1.0f));
 		m_ImageData[index] = Utils::ConvertToRGBA(color);
 	});
 }
@@ -247,6 +242,39 @@ void Renderer::BlurHorizontal()
 		m_BlurImage[index] = blurredColor / (float)count;
 	});
 	
+}
+
+void Renderer::BlurVertical()
+{
+	const int bloomRadius = m_Settings.BloomRadius;
+	const uint32_t width = m_FinalImage->GetWidth();
+	const uint32_t height = m_FinalImage->GetHeight();
+	ForEachPixel([this, bloomRadius, width, height](uint32_t x, uint32_t y, uint32_t index)
+	{
+		glm::vec4 blurredColor(0.0f);
+		int count = 0;
+
+		for (int offset = -bloomRadius; offset <= bloomRadius; offset++)
+		{
+			int sampleY = (int)y + offset;
+			if (sampleY < 0 || sampleY >= (int)height)
+				continue;
+			uint32_t sampleIndex = sampleY * width + x;
+			blurredColor += m_BlurImage[sampleIndex];
+			count++;
+		}
+		m_BloomImage[index] = blurredColor / (float)count;
+	});
+}
+
+void Renderer::CombineBloom()
+{
+	const float bloomStrength = m_Settings.BloomStrength;
+	ForEachPixel([this, bloomStrength](uint32_t, uint32_t, uint32_t index)
+	{
+		glm::vec4 bloom = m_BloomImage[index] * bloomStrength;
+		m_HDRImage[index] += bloom;
+	});
 }
 
 Renderer::HitPayload Renderer::TraceRay(const Ray& ray)

@@ -13,15 +13,23 @@
 class Renderer
 {
 public:
+	enum class ToneMapper
+	{
+		None = 0,
+		Reinhard,
+		ACES,  
+		Hable
+	};
 	struct Settings
 	{
 		bool Accumate = true;
 		bool SlowRandom = true;
 		float BloomThreshold = 1.0f;
-		bool ShowBloomBuffer = true;
+		//bool ShowBloomBuffer = true;
 		int BloomRadius = 10;
 		float BloomStrength = 1.0f;
-
+		ToneMapper ToneMapping = ToneMapper::ACES;
+		float Exposure = 1.0f;
 	};
 public:
 	Renderer() = default;
@@ -52,8 +60,11 @@ private:
 	void RayTrace();
 	void Accumulate();
 	void Bloom();
+
+	void Exposure();
 	void ToneMap();
 	void GammaCorrection();
+
 	void ConvertToRGBA();
 	void Present();
 
@@ -61,6 +72,12 @@ private:
 	void BlurHorizontal();
 	void BlurVertical();
 	void CombineBloom();
+
+	
+
+	glm::vec3 ReinhardToneMap(const glm::vec3& color);
+	glm::vec3 ACESToneMap(const glm::vec3& color);
+	glm::vec3 HableToneMap(const glm::vec3& color);
 
 	HitPayload TraceRay(const Ray& ray);
 	HitPayload ClosestHit(const Ray& ray, float hitDistance,int objectIndex);

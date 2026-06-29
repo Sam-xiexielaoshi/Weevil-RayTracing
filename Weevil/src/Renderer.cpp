@@ -147,8 +147,11 @@ void Renderer::Render(const Scene& scene, const Camera& camera)
 	RayTrace();	
 	Accumulate();
 	Bloom();
+
+	Exposure();
 	ToneMap();
 	GammaCorrection();
+
 	ConvertToRGBA();
 	Present();
 
@@ -185,8 +188,35 @@ void Renderer::Bloom()
 	CombineBloom();
 }
 
+void Renderer::Exposure()
+{
+	ForEachPixel([this](uint32_t, uint32_t, uint32_t index)
+	{
+		m_HDRImage[index] *= m_Settings.Exposure;
+	});
+}
+
 void Renderer::ToneMap()
 {
+	ForEachPixel([this](uint32_t, uint32_t, uint32_t index)
+	{
+		glm::vec3 color = glm::vec3(m_HDRImage[index]);
+		switch (m_Settings.ToneMapping)
+		{
+		case ToneMapper::None:
+			break;
+		case ToneMapper::Reinhard:
+			color = ReinhardToneMap(color);
+			break;
+		case ToneMapper::ACES:
+			color = ACESToneMap(color);
+			break;
+		case ToneMapper::Hable:
+			color = HableToneMap(color);
+			break;
+		}
+		m_HDRImage[index] = glm::vec4(color, m_HDRImage[index].a);
+	});
 }
 
 void Renderer::GammaCorrection()
@@ -275,6 +305,29 @@ void Renderer::CombineBloom()
 		glm::vec4 bloom = m_BloomImage[index] * bloomStrength;
 		m_HDRImage[index] += bloom;
 	});
+}
+
+glm::vec3 Renderer::ReinhardToneMap(const glm::vec3& color)
+{
+	return color / (color + glm::vec3(1.0f));
+}
+
+glm::vec3 Renderer::ACESToneMap(const glm::vec3& color)
+{
+	const float a = 2.51f;
+	const float b = 0.03f;
+	const float c = 2.43f;
+	const float d = 0.59f;
+	const float e = 0.14f;
+
+	glm::vec3 result = (color * (a * color + b)) / (color * (c * color + d) + e);
+	return glm::clamp(result, glm::vec3(0.0f), glm::vec3(1.0f));
+}
+
+glm::vec3 Renderer::HableToneMap(const glm::vec3& color)
+{
+	//needed to be done in future
+	return ACESToneMap(color);
 }
 
 Renderer::HitPayload Renderer::TraceRay(const Ray& ray)

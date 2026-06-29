@@ -68,39 +68,165 @@ public:
 		{
 			Render();
 		}
-
+		
+		//accumate checkbox ui
 		ImGui::Checkbox("Accumulate", &m_Renderer.GetSettings().Accumate);
+		ImGui::Separator();
 
+		//Tone MApper settings ui
+		if (ImGui::TreeNodeEx("Tone Mapping", ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			bool toneMappingChanged = false;
+			const char* toneMappers[]
+			{
+				"None",
+				"Reinhard",
+				"ACES Filmic",
+				"Hable"
+			};
+			int currentToneMapper = static_cast<int>(m_Renderer.GetSettings().ToneMapping);
+			toneMappingChanged |= ImGui::Combo(
+				"Tone Mapper",
+				&currentToneMapper,
+				toneMappers,
+				IM_ARRAYSIZE(toneMappers));
+			if (toneMappingChanged)
+			{
+				m_Renderer.GetSettings().ToneMapping =
+					static_cast<Renderer::ToneMapper>(currentToneMapper);
+			}
+			toneMappingChanged |= ImGui::DragFloat(
+				"Exposure",
+				&m_Renderer.GetSettings().Exposure,
+				0.05f,
+				0.0f,
+				10.0f);
+			if (toneMappingChanged)
+				m_Renderer.ResertFrameIndex();
+			ImGui::TreePop();
+		}
+		ImGui::Separator();
+
+		//bloom settings ui
+		if (ImGui::TreeNodeEx("Bloom", ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			bool bloomChanged = false;
+
+			bloomChanged |= ImGui::DragFloat(
+				"Threshold",
+				&m_Renderer.GetSettings().BloomThreshold,
+				0.05f,
+				0.0f,
+				10.0f);
+
+			bloomChanged |= ImGui::DragInt(
+				"Radius",
+				&m_Renderer.GetSettings().BloomRadius,
+				1,
+				1,
+				20);
+
+			bloomChanged |= ImGui::DragFloat(
+				"Strength",
+				&m_Renderer.GetSettings().BloomStrength,
+				0.05f,
+				0.0f,
+				5.0f);
+
+			if (bloomChanged)
+				m_Renderer.ResertFrameIndex();
+
+			ImGui::TreePop();
+		}
+		ImGui::Separator();
+
+		//reset button
 		if(ImGui::Button("Reset"))
 			m_Renderer.ResertFrameIndex();
 
 		ImGui::End();
 
 		ImGui::Begin("Scene");
-		for (size_t i = 0; i < m_Scene.Spheres.size(); i++)
-		{
-			ImGui::PushID(i);
-			Sphere& sphere = m_Scene.Spheres[i];
-			ImGui::DragFloat3("Position", glm::value_ptr(sphere.Position), 0.1f);
-			ImGui::DragFloat("Radius", &sphere.Radius, 0.1f);
-			ImGui::DragInt("Material", &sphere.MaterialIndex, 1.0f, 0, (int)m_Scene.Materials.size()-1);
 
-			ImGui::Separator();
-			ImGui::PopID();
+		//spheres tree node
+		if (ImGui::TreeNodeEx("Spheres", ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			for (size_t i = 0; i < m_Scene.Spheres.size(); i++)
+			{
+				ImGui::PushID(i);
+				std::string label = "Sphere " + std::to_string(i);
+				if (ImGui::TreeNode(label.c_str()))
+				{
+					Sphere& sphere = m_Scene.Spheres[i];
+					bool sphereChanged = false;
+					sphereChanged |= ImGui::DragFloat3(
+						"Position",
+						glm::value_ptr(sphere.Position),
+						0.1f);
+					sphereChanged |= ImGui::DragFloat(
+						"Radius",
+						&sphere.Radius,
+						0.1f);
+					sphereChanged |= ImGui::DragInt(
+						"Material",
+						&sphere.MaterialIndex,
+						1,
+						0,
+						(int)m_Scene.Materials.size() - 1);
+					if (sphereChanged)
+						m_Renderer.ResertFrameIndex();
+					ImGui::TreePop();
+				}
+				ImGui::PopID();
+			}
+			ImGui::TreePop();
 		}
-		for (size_t i = 0; i < m_Scene.Materials.size(); i++)
+		ImGui::Separator();
+
+		//materials tree node
+		if (ImGui::TreeNodeEx("Materials", ImGuiTreeNodeFlags_DefaultOpen))
 		{
-			ImGui::PushID(i);
-
-			Material& material = m_Scene.Materials[i];
-			ImGui::ColorEdit3("Albedo", glm::value_ptr(material.Albedo));
-			ImGui::DragFloat("Roughness", &material.Roughness, 0.5f, 0.0f, 1.0f);
-			ImGui::DragFloat("Metallic", &material.Metallic, 0.5f, 0.0f, 1.0f);
-			ImGui::ColorEdit3("Emission Color", glm::value_ptr(material.EmissionColor));
-			ImGui::DragFloat("Emission Power", &material.EmissionPower, 0.5f, 0.0f, FLT_MAX);
-
-			ImGui::Separator();
-			ImGui::PopID();
+			for (size_t i = 0; i < m_Scene.Materials.size(); i++)
+			{
+				ImGui::PushID(i);
+				std::string label =
+					"Material " + std::to_string(i);
+				if (ImGui::TreeNode(label.c_str()))
+				{
+					Material& material =
+						m_Scene.Materials[i];
+					bool materialChanged = false;
+					materialChanged |= ImGui::ColorEdit3(
+						"Albedo",
+						glm::value_ptr(material.Albedo));
+					materialChanged |= ImGui::DragFloat(
+						"Roughness",
+						&material.Roughness,
+						0.05f,
+						0.0f,
+						1.0f);
+					materialChanged |= ImGui::DragFloat(
+						"Metallic",
+						&material.Metallic,
+						0.05f,
+						0.0f,
+						1.0f);
+					materialChanged |= ImGui::ColorEdit3(
+						"Emission Color",
+						glm::value_ptr(material.EmissionColor));
+					materialChanged |= ImGui::DragFloat(
+						"Emission Power",
+						&material.EmissionPower,
+						0.1f,
+						0.0f,
+						FLT_MAX);
+					if (materialChanged)
+						m_Renderer.ResertFrameIndex();
+					ImGui::TreePop();
+				}
+				ImGui::PopID();
+			}
+			ImGui::TreePop();
 		}
 
 		ImGui::End();

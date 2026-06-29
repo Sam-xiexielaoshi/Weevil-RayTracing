@@ -43,6 +43,9 @@ void Renderer::OnResize(uint32_t width, uint32_t height)
 	delete[] m_HDRImage;
 	m_HDRImage = new glm::vec4[width * height];
 
+	delete[] m_BloomImage;
+	m_BloomImage = new glm::vec4[width * height];
+
 	m_ImageHorizontalIterator.resize(width);
 	m_ImageVerticalIterator.resize(height);
 
@@ -173,6 +176,17 @@ void Renderer::Accumulate()
 
 void Renderer::Bloom()
 {
+	ForEachPixel([this](uint32_t, uint32_t, uint32_t index)
+	{
+		glm::vec4 color = m_HDRImage[index];
+
+		float brightness = glm::dot(glm::vec3(color), glm::vec3(0.2126f, 0.7152f, 0.0722f)); //luminance formula
+
+		if(brightness > m_Settings.BloomThreshold)
+			m_BloomImage[index] = color;
+		else 
+			m_BloomImage[index] = glm::vec4(0.0f);
+	});
 }
 
 void Renderer::ToneMap()
@@ -188,7 +202,7 @@ void Renderer::ConvertToRGBA()
 	ForEachPixel([this](uint32_t, uint32_t, uint32_t index)
 	{
 		glm::vec4 color = glm::clamp(
-			m_HDRImage[index],
+			m_BloomImage[index],
 			glm::vec4(0.0f),
 			glm::vec4(1.0f));
 

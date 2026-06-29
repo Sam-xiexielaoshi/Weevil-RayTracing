@@ -17,6 +17,7 @@ public:
 	{
 		bool Accumate = true;
 		bool SlowRandom = true;
+		float BloomThreshold = 0.5f;
 	};
 public:
 	Renderer() = default;
@@ -69,6 +70,7 @@ private:
 	glm::vec4* m_AccumulationData = nullptr;
 
 	glm::vec4* m_HDRImage = nullptr;
+	glm::vec4* m_BloomImage = nullptr;
 
 	uint32_t m_FrameIndex = 1;
 

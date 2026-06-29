@@ -7,6 +7,8 @@
 
 #include <memory>
 #include <glm/glm.hpp>
+#include <execution>
+#include <algorithm>
 
 class Renderer
 {
@@ -39,6 +41,17 @@ private:
 
 	glm::vec4 PerPixel(uint32_t x, uint32_t y);//raygen
 
+	template<typename T>
+	void ForEachPixel(T&& t);
+
+	void RayTrace();
+	void Accumulate();
+	void Bloom();
+	void ToneMap();
+	void GammaCorrection();
+	void ConvertToRGBA();
+	void Present();
+
 	HitPayload TraceRay(const Ray& ray);
 	HitPayload ClosestHit(const Ray& ray, float hitDistance,int objectIndex);
 	HitPayload Miss(const Ray& ray);
@@ -55,5 +68,50 @@ private:
 	uint32_t* m_ImageData = nullptr;
 	glm::vec4* m_AccumulationData = nullptr;
 
+	glm::vec4* m_HDRImage = nullptr;
+
 	uint32_t m_FrameIndex = 1;
+
+
 };
+
+template<typename T>
+void Renderer::ForEachPixel(T&& t)
+{
+#define MT 1
+
+#if MT
+
+		const uint32_t width = m_FinalImage->GetWidth();
+
+		std::for_each(std::execution::par,
+			m_ImageVerticalIterator.begin(),
+			m_ImageVerticalIterator.end(),
+			[this, &t, width](uint32_t y)
+			{
+				std::for_each(std::execution::par,
+					m_ImageHorizontalIterator.begin(),
+					m_ImageHorizontalIterator.end(),
+					[&, y](uint32_t x)
+					{
+						uint32_t index = y * width + x;
+						t(x, y, index);
+					});
+			});
+
+#else
+
+		const uint32_t width = m_FinalImage->GetWidth();
+		const uint32_t height = m_FinalImage->GetHeight();
+
+		for (uint32_t y = 0; y < height; y++)
+		{
+			for (uint32_t x = 0; x < width; x++)
+			{
+				uint32_t index = y * width + x;
+				t(x, y, index);
+			}
+		}
+
+#endif
+}

@@ -40,6 +40,9 @@ void Renderer::OnResize(uint32_t width, uint32_t height)
 	delete[] m_AccumulationData;
 	m_AccumulationData = new glm::vec4[width * height];
 
+	delete[] m_HDRImage;
+	m_HDRImage = new glm::vec4[width * height];
+
 	m_ImageHorizontalIterator.resize(width);
 	m_ImageVerticalIterator.resize(height);
 
@@ -135,45 +138,67 @@ void Renderer::Render(const Scene& scene, const Camera& camera)
 	if (m_FrameIndex == 1)
 		memset(m_AccumulationData, 0, m_FinalImage->GetWidth() * m_FinalImage->GetHeight() * sizeof(glm::vec4));
 
-#define MT 1
-#if MT
-	//~3m
-	std::for_each(std::execution::par, m_ImageVerticalIterator.begin(), m_ImageVerticalIterator.end(), [this](uint32_t j)
-		{
-			std::for_each(std::execution::par, m_ImageHorizontalIterator.begin(), m_ImageHorizontalIterator.end(), [this, j](uint32_t i)
-				{
-					glm::vec4 light = PerPixel(i, j);
-					m_AccumulationData[j * m_FinalImage->GetWidth() + i] += light;
-
-					glm::vec4 accumulatedColor = m_AccumulationData[j * m_FinalImage->GetWidth() + i] / (float)m_FrameIndex;
-
-					light = glm::clamp(accumulatedColor, glm::vec4(0.0f), glm::vec4(1.0f));
-					m_ImageData[j * m_FinalImage->GetWidth() + i] = Utils::ConvertToRGBA(light);
-				});
-		});
-#else
-	for (uint32_t j = 0; j < m_FinalImage->GetHeight(); j++)
-	{
-		// Rendering code goes here rendereing every pixel 
-		for (uint32_t i = 0; i < m_FinalImage->GetWidth(); i++)
-		{
-			glm::vec4 light = PerPixel(i, j);
-			m_AccumulationData[j * m_FinalImage->GetWidth() + i] += light;
-
-			glm::vec4 accumulatedColor = m_AccumulationData[j * m_FinalImage->GetWidth() + i] / (float)m_FrameIndex;
-
-			light = glm::clamp(accumulatedColor, glm::vec4(0.0f), glm::vec4(1.0f));
-			m_ImageData[j * m_FinalImage->GetWidth() + i] = Utils::ConvertToRGBA(light);
-		}
-	}
-#endif
-
-	m_FinalImage->SetData(m_ImageData);
+	RayTrace();	
+	Accumulate();
+	Bloom();
+	ToneMap();
+	GammaCorrection();
+	ConvertToRGBA();
+	Present();
 
 	if (m_Settings.Accumate)
 		m_FrameIndex++;
 	else
 		m_FrameIndex = 1;
+}
+
+void Renderer::RayTrace()
+{
+	ForEachPixel([this](uint32_t x, uint32_t y, uint32_t index)
+	{
+		m_HDRImage[index] = PerPixel(x, y);
+	});
+}
+
+void Renderer::Accumulate()
+{
+	ForEachPixel([this](uint32_t, uint32_t, uint32_t index)
+	{
+		m_AccumulationData[index] += m_HDRImage[index];
+
+		m_HDRImage[index] =
+			m_AccumulationData[index] / (float)m_FrameIndex;
+	});
+}
+
+void Renderer::Bloom()
+{
+}
+
+void Renderer::ToneMap()
+{
+}
+
+void Renderer::GammaCorrection()
+{
+}
+
+void Renderer::ConvertToRGBA()
+{
+	ForEachPixel([this](uint32_t, uint32_t, uint32_t index)
+	{
+		glm::vec4 color = glm::clamp(
+			m_HDRImage[index],
+			glm::vec4(0.0f),
+			glm::vec4(1.0f));
+
+		m_ImageData[index] = Utils::ConvertToRGBA(color);
+	});
+}
+
+void Renderer::Present()
+{
+	m_FinalImage->SetData(m_ImageData);
 }
 
 Renderer::HitPayload Renderer::TraceRay(const Ray& ray)

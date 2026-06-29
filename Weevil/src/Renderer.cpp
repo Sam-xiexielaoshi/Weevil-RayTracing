@@ -46,6 +46,9 @@ void Renderer::OnResize(uint32_t width, uint32_t height)
 	delete[] m_BloomImage;
 	m_BloomImage = new glm::vec4[width * height];
 
+	delete[] m_BlurImage;
+	m_BlurImage = new glm::vec4[width * height];
+
 	m_ImageHorizontalIterator.resize(width);
 	m_ImageVerticalIterator.resize(height);
 
@@ -176,17 +179,8 @@ void Renderer::Accumulate()
 
 void Renderer::Bloom()
 {
-	ForEachPixel([this](uint32_t, uint32_t, uint32_t index)
-	{
-		glm::vec4 color = m_HDRImage[index];
-
-		float brightness = glm::dot(glm::vec3(color), glm::vec3(0.2126f, 0.7152f, 0.0722f)); //luminance formula
-
-		if(brightness > m_Settings.BloomThreshold)
-			m_BloomImage[index] = color;
-		else 
-			m_BloomImage[index] = glm::vec4(0.0f);
-	});
+	ExtractBrightPass();
+	BlurHorizontal();
 }
 
 void Renderer::ToneMap()
@@ -201,11 +195,14 @@ void Renderer::ConvertToRGBA()
 {
 	ForEachPixel([this](uint32_t, uint32_t, uint32_t index)
 	{
-		glm::vec4 color = glm::clamp(
-			m_BloomImage[index],
+		glm::vec4 color;
+		if (m_Settings.ShowBloomBuffer)
+			color = m_BlurImage[index];
+		else
+			color = m_HDRImage[index];
+		color = glm::clamp(color,
 			glm::vec4(0.0f),
 			glm::vec4(1.0f));
-
 		m_ImageData[index] = Utils::ConvertToRGBA(color);
 	});
 }
@@ -213,6 +210,43 @@ void Renderer::ConvertToRGBA()
 void Renderer::Present()
 {
 	m_FinalImage->SetData(m_ImageData);
+}
+
+void Renderer::ExtractBrightPass()
+{
+	ForEachPixel([this](uint32_t, uint32_t, uint32_t index)
+	{
+		glm::vec4 color = m_HDRImage[index];
+
+		float brightness = glm::dot(glm::vec3(color), glm::vec3(0.2126f, 0.7152f, 0.0722f)); //luminance formula
+		if (brightness > m_Settings.BloomThreshold)
+			m_BloomImage[index] = color;
+		else
+			m_BloomImage[index] = glm::vec4(0.0f);
+	});
+}
+
+void Renderer::BlurHorizontal()
+{		
+	const int bloomRadius = m_Settings.BloomRadius;
+	const uint32_t width = m_FinalImage->GetWidth();
+	ForEachPixel([this, bloomRadius, width](uint32_t x, uint32_t y, uint32_t index)
+	{
+		glm::vec4 blurredColor(0.0f);
+		int count = 0;
+		for (int offset = -bloomRadius; offset <= bloomRadius; offset++)
+		{
+			int sampleX = (int)x + offset;
+			if (sampleX < 0 || sampleX >= (int)width)
+				continue;
+			uint32_t sampleIndex = y * width + sampleX;
+
+			blurredColor += m_BloomImage[sampleIndex];
+			count++;
+		}
+		m_BlurImage[index] = blurredColor / (float)count;
+	});
+	
 }
 
 Renderer::HitPayload Renderer::TraceRay(const Ray& ray)

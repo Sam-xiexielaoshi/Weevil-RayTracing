@@ -18,6 +18,9 @@ public:
 		bool Accumate = true;
 		bool SlowRandom = true;
 		float BloomThreshold = 0.5f;
+		bool ShowBloomBuffer = true;
+		int BloomRadius = 3;
+
 	};
 public:
 	Renderer() = default;
@@ -53,6 +56,10 @@ private:
 	void ConvertToRGBA();
 	void Present();
 
+	void ExtractBrightPass();
+	void BlurHorizontal();
+	//void BlurVertical();
+
 	HitPayload TraceRay(const Ray& ray);
 	HitPayload ClosestHit(const Ray& ray, float hitDistance,int objectIndex);
 	HitPayload Miss(const Ray& ray);
@@ -71,6 +78,7 @@ private:
 
 	glm::vec4* m_HDRImage = nullptr;
 	glm::vec4* m_BloomImage = nullptr;
+	glm::vec4* m_BlurImage = nullptr;
 
 	uint32_t m_FrameIndex = 1;
 

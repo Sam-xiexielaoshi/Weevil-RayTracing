@@ -30,6 +30,7 @@ public:
 		float BloomStrength = 1.0f;
 		ToneMapper ToneMapping = ToneMapper::ACES;
 		float Exposure = 1.0f;
+		float Gamma = 2.2f;
 	};
 public:
 	Renderer() = default;
@@ -61,9 +62,9 @@ private:
 	void Accumulate();
 	void Bloom();
 
-	void Exposure();
-	void ToneMap();
-	void GammaCorrection();
+	void ApplyExposure();
+	void ApplyToneMapping();
+	void ApplyGammaCorrection();
 
 	void ConvertToRGBA();
 	void Present();

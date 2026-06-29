@@ -85,6 +85,12 @@ public:
 				"Hable"
 			};
 			int currentToneMapper = static_cast<int>(m_Renderer.GetSettings().ToneMapping);
+			toneMappingChanged |= ImGui::DragFloat(
+				"Exposure",
+				&m_Renderer.GetSettings().Exposure,
+				0.05f,
+				0.0f,
+				10.0f);
 			toneMappingChanged |= ImGui::Combo(
 				"Tone Mapper",
 				&currentToneMapper,
@@ -96,11 +102,11 @@ public:
 					static_cast<Renderer::ToneMapper>(currentToneMapper);
 			}
 			toneMappingChanged |= ImGui::DragFloat(
-				"Exposure",
-				&m_Renderer.GetSettings().Exposure,
+				"Gamma",
+				&m_Renderer.GetSettings().Gamma,
 				0.05f,
 				0.0f,
-				10.0f);
+				5.0f);
 			if (toneMappingChanged)
 				m_Renderer.ResertFrameIndex();
 			ImGui::TreePop();

@@ -124,13 +124,16 @@ glm::vec4 Renderer::PerPixel(uint32_t x, uint32_t y)
 
 		const Sphere& sphere = m_ActiveScene->Spheres[payload.ObjectIndex];
 		const Material& material = m_ActiveScene->Materials[sphere.MaterialIndex];
-
-		throughput *= material.Albedo; //reduce the throughput for the next bounce
+		glm::vec3 attenuation =	glm::mix(glm::vec3(1.0f), material.Albedo, material.Metallic);
+		throughput *= attenuation;
 		light += material.GetEmission();
 
 		ray.Origin = payload.WorldPosition + payload.WorldNormal * 0.0001f; //offset the origin to avoid self intersection
-		//ray.Direction = glm::reflect(ray.Direction, payload.WorldNormal + material.Roughness * Walnut::Random::Vec3(-0.5f, 0.5f)); //reflect the ray direction based on the normal
-		ray.Direction = glm::normalize(payload.WorldNormal + Walnut::Random::InUnitSphere()); //random direction for the next bounce
+		glm::vec3 diffuseDirection = glm::normalize(payload.WorldNormal + Walnut::Random::InUnitSphere());
+		glm::vec3 reflectedDirection = glm::reflect(ray.Direction, payload.WorldNormal);
+		reflectedDirection += material.Roughness * Walnut::Random::InUnitSphere();
+		reflectedDirection = glm::normalize(reflectedDirection);
+		ray.Direction = glm::normalize(glm::mix(diffuseDirection, reflectedDirection, material.Metallic));
 	}
 
 	return glm::vec4(light, 1.0f); //abgr format
@@ -148,9 +151,9 @@ void Renderer::Render(const Scene& scene, const Camera& camera)
 	Accumulate();
 	Bloom();
 
-	Exposure();
-	ToneMap();
-	GammaCorrection();
+	ApplyExposure();
+	ApplyToneMapping();
+	ApplyGammaCorrection();
 
 	ConvertToRGBA();
 	Present();
@@ -188,7 +191,7 @@ void Renderer::Bloom()
 	CombineBloom();
 }
 
-void Renderer::Exposure()
+void Renderer::ApplyExposure()
 {
 	ForEachPixel([this](uint32_t, uint32_t, uint32_t index)
 	{
@@ -196,7 +199,7 @@ void Renderer::Exposure()
 	});
 }
 
-void Renderer::ToneMap()
+void Renderer::ApplyToneMapping()
 {
 	ForEachPixel([this](uint32_t, uint32_t, uint32_t index)
 	{
@@ -219,8 +222,16 @@ void Renderer::ToneMap()
 	});
 }
 
-void Renderer::GammaCorrection()
+void Renderer::ApplyGammaCorrection()
 {
+	const float inverseGamma = 1.0f / m_Settings.Gamma;
+	ForEachPixel([this, inverseGamma](uint32_t, uint32_t, uint32_t index)
+	{
+		glm::vec4& color = m_HDRImage[index];
+		color.r = std::pow(color.r, inverseGamma);
+		color.g = std::pow(color.g, inverseGamma);
+		color.b = std::pow(color.b, inverseGamma);
+	});
 }
 
 void Renderer::ConvertToRGBA()

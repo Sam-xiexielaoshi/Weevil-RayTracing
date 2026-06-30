@@ -9,10 +9,16 @@
 #include <glm/glm.hpp>
 #include <execution>
 #include <algorithm>
+#include <vector>
 
 class Renderer
 {
 public:
+	enum class BloomFilter
+	{
+		Box,
+		Gaussian
+	};
 	enum class ToneMapper
 	{
 		None = 0,
@@ -24,6 +30,7 @@ public:
 	{
 		bool Accumate = true;
 		bool SlowRandom = true;
+		BloomFilter BloomFilter = BloomFilter::Gaussian;
 		float BloomThreshold = 1.0f;
 		//bool ShowBloomBuffer = true;
 		int BloomRadius = 10;
@@ -42,6 +49,8 @@ public:
 
 	void ResertFrameIndex() { m_FrameIndex = 1; }
 	Settings& GetSettings() { return m_Settings; }
+
+	void GenerateGaussianKernal();
 
 private:
 	struct HitPayload
@@ -73,9 +82,7 @@ private:
 	void BlurHorizontal();
 	void BlurVertical();
 	void CombineBloom();
-
 	
-
 	glm::vec3 ReinhardToneMap(const glm::vec3& color);
 	glm::vec3 ACESToneMap(const glm::vec3& color);
 	glm::vec3 HableToneMap(const glm::vec3& color);
@@ -87,6 +94,7 @@ private:
 private:
 	std::shared_ptr<Walnut::Image>m_FinalImage;
 	Settings m_Settings;
+	std::vector<float> m_GaussianKernel;
 
 	std::vector<uint32_t> m_ImageHorizontalIterator, m_ImageVerticalIterator;
 

@@ -116,22 +116,32 @@ public:
 		//bloom settings ui
 		if (ImGui::TreeNodeEx("Bloom", ImGuiTreeNodeFlags_DefaultOpen))
 		{
+			const char* bloomFilters[]
+			{
+				"Box",
+				"Gaussian"
+			};
+			int currentBloomFilter = static_cast<int>(m_Renderer.GetSettings().BloomFilter);
 			bool bloomChanged = false;
-
+			bloomChanged |= ImGui::Combo(
+				"Filter",
+				&currentBloomFilter,
+				bloomFilters,
+				IM_ARRAYSIZE(bloomFilters));
+			if(bloomChanged)
+				m_Renderer.GetSettings().BloomFilter = static_cast<Renderer::BloomFilter>(currentBloomFilter);
 			bloomChanged |= ImGui::DragFloat(
 				"Threshold",
 				&m_Renderer.GetSettings().BloomThreshold,
 				0.05f,
 				0.0f,
 				10.0f);
-
 			bloomChanged |= ImGui::DragInt(
 				"Radius",
 				&m_Renderer.GetSettings().BloomRadius,
 				1,
 				1,
 				20);
-
 			bloomChanged |= ImGui::DragFloat(
 				"Strength",
 				&m_Renderer.GetSettings().BloomStrength,
@@ -140,8 +150,10 @@ public:
 				5.0f);
 
 			if (bloomChanged)
+			{
+				m_Renderer.GenerateGaussianKernal();
 				m_Renderer.ResertFrameIndex();
-
+			}
 			ImGui::TreePop();
 		}
 		ImGui::Separator();

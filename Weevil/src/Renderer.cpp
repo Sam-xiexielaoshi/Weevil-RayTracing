@@ -57,6 +57,8 @@ void Renderer::OnResize(uint32_t width, uint32_t height)
 
 	for(uint32_t i =0; i < height; i++)
 		m_ImageVerticalIterator[i] = i;
+
+	GenerateGaussianKernal();
 }
 
 glm::vec4 Renderer::PerPixel(uint32_t x, uint32_t y)
@@ -266,23 +268,44 @@ void Renderer::BlurHorizontal()
 {		
 	const int bloomRadius = m_Settings.BloomRadius;
 	const uint32_t width = m_FinalImage->GetWidth();
-	ForEachPixel([this, bloomRadius, width](uint32_t x, uint32_t y, uint32_t index)
+	if(m_Settings.BloomFilter == BloomFilter::Box)
 	{
-		glm::vec4 blurredColor(0.0f);
-		int count = 0;
-		for (int offset = -bloomRadius; offset <= bloomRadius; offset++)
+		ForEachPixel([this, bloomRadius, width](uint32_t x, uint32_t y, uint32_t index)
 		{
-			int sampleX = (int)x + offset;
-			if (sampleX < 0 || sampleX >= (int)width)
-				continue;
-			uint32_t sampleIndex = y * width + sampleX;
-
-			blurredColor += m_BloomImage[sampleIndex];
-			count++;
-		}
-		m_BlurImage[index] = blurredColor / (float)count;
-	});
-	
+			glm::vec4 blurredColor(0.0f);
+			int count = 0;
+			for (int offset = -bloomRadius; offset <= bloomRadius; offset++)
+			{
+				int sampleX = (int)x + offset;
+				if (sampleX < 0 || sampleX >= (int)width)
+					continue;
+				uint32_t sampleIndex = y * width + sampleX;
+				blurredColor += m_BloomImage[sampleIndex];
+				count++;
+			}
+			m_BlurImage[index] = blurredColor / (float)count;
+		});
+		return;
+	}
+	else
+	{
+		ForEachPixel([this, bloomRadius, width](uint32_t x, uint32_t y, uint32_t index)
+		{
+			glm::vec4 blurredColor(0.0f);
+			float totalWeight = 0.0f;
+			for (int offset = -bloomRadius; offset <= bloomRadius; offset++)
+			{
+				int sampleX = (int)x + offset;
+				if (sampleX < 0 || sampleX >= (int)width)
+					continue;
+				uint32_t sampleIndex = y * width + sampleX;
+				float weight = m_GaussianKernel[offset + bloomRadius];
+				blurredColor +=	m_BloomImage[sampleIndex] * weight;
+				totalWeight += weight;
+			}
+			m_BlurImage[index] = blurredColor / totalWeight;
+		});
+	}
 }
 
 void Renderer::BlurVertical()
@@ -290,22 +313,44 @@ void Renderer::BlurVertical()
 	const int bloomRadius = m_Settings.BloomRadius;
 	const uint32_t width = m_FinalImage->GetWidth();
 	const uint32_t height = m_FinalImage->GetHeight();
-	ForEachPixel([this, bloomRadius, width, height](uint32_t x, uint32_t y, uint32_t index)
+	if (m_Settings.BloomFilter == BloomFilter::Box)
 	{
-		glm::vec4 blurredColor(0.0f);
-		int count = 0;
-
-		for (int offset = -bloomRadius; offset <= bloomRadius; offset++)
+		ForEachPixel([this, bloomRadius, width, height](uint32_t x, uint32_t y, uint32_t index)
 		{
-			int sampleY = (int)y + offset;
-			if (sampleY < 0 || sampleY >= (int)height)
-				continue;
-			uint32_t sampleIndex = sampleY * width + x;
-			blurredColor += m_BlurImage[sampleIndex];
-			count++;
-		}
-		m_BloomImage[index] = blurredColor / (float)count;
-	});
+			glm::vec4 blurredColor(0.0f);
+			int count = 0;
+			for (int offset = -bloomRadius; offset <= bloomRadius; offset++)
+			{
+				int sampleY = (int)y + offset;
+				if (sampleY < 0 || sampleY >= (int)height)
+					continue;
+				uint32_t sampleIndex = sampleY * width + x;
+				blurredColor += m_BlurImage[sampleIndex];
+				count++;
+			}
+			m_BloomImage[index] = blurredColor / (float)count;
+		});
+		return;
+	}
+	else
+	{
+		ForEachPixel([this, bloomRadius, width, height](uint32_t x, uint32_t y, uint32_t index)
+		{
+			glm::vec4 blurredColor(0.0f);
+			float totalWeight = 0.0f;
+			for (int offset = -bloomRadius; offset <= bloomRadius; offset++)
+			{
+				int sampleY = (int)y + offset;
+				if (sampleY < 0 || sampleY >= (int)height)
+					continue;
+				uint32_t sampleIndex = sampleY * width + x;
+				float weight = m_GaussianKernel[offset + bloomRadius];
+				blurredColor += m_BlurImage[sampleIndex] * weight;
+				totalWeight += weight;
+			}
+			m_BloomImage[index] = blurredColor / totalWeight;
+		});
+	}
 }
 
 void Renderer::CombineBloom()
@@ -316,6 +361,23 @@ void Renderer::CombineBloom()
 		glm::vec4 bloom = m_BloomImage[index] * bloomStrength;
 		m_HDRImage[index] += bloom;
 	});
+}
+
+void Renderer::GenerateGaussianKernal()
+{
+	m_GaussianKernel.clear();
+	const int radius = m_Settings.BloomRadius;
+	const float sigma = std::max(0.5f, radius * 0.5f);
+	float totalWeight = 0.0f;
+	for (int i = -radius; i <= radius; i++)
+	{
+		float weight = std::exp(-(i * i) /(2.0f * sigma * sigma));
+		m_GaussianKernel.push_back(weight);
+		totalWeight += weight;
+	}
+	// Normalize the kernel
+	for (float& weight : m_GaussianKernel)
+		weight /= totalWeight;
 }
 
 glm::vec3 Renderer::ReinhardToneMap(const glm::vec3& color)

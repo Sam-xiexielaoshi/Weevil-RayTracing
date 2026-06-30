@@ -63,49 +63,6 @@ void Renderer::OnResize(uint32_t width, uint32_t height)
 
 glm::vec4 Renderer::PerPixel(uint32_t x, uint32_t y)
 {
-	//Ray ray;
-	//ray.Origin = m_ActiveCamera->GetPosition();
-	//ray.Direction =	m_ActiveCamera->GetRayDirections()[x + y * m_FinalImage->GetWidth()];
-	//glm::vec3 light(0.0f);
-	////float throughput = 1.0f;
-	//glm::vec3 throughtput(1.0f);
-	//int bounces = 5; //number of bounces for the ray
-	//for(int i = 0; i < bounces; i++)
-	//{
-	//	Renderer::HitPayload payload = TraceRay(ray);
-	//	if (payload.HitDistance < 0.0f)
-	//	{
-	//		glm::vec3 skyColor(0.6f, 0.7f, 0.9f); //light blue light for the sky
-	//		light += skyColor * throughtput;
-	//		break;
-	//	}
-	//	const Sphere& sphere = m_ActiveScene->Spheres[payload.ObjectIndex];
-	//	const Material& material = m_ActiveScene->Materials[sphere.MaterialIndex];
-	//	//direct lightinh
-	//	glm::vec3 lightDir = glm::normalize(glm::vec3(-1.0f, -1.0f, -1.0f));
-	//	float NdotL = glm::max(glm::dot(payload.WorldNormal, -lightDir), 0.0f); // this is N * L classic lambertian diffuse lighting equation
-	//
-	//	glm::vec3 sphereColor = material.Albedo;
-	//	sphereColor *= intensity;
-	//	glm::vec3 diffuse = material.Albedo * NdotL * (1.0f - material.Metallic); //diffuse component
-	//	light += diffuse * throughtput; //u can put spherelight here but i will use the diffuse component instead to make it more realistic
-	//	throughtput *= 0.5f; //reduce the throughput for the next bounce basically ignores the material
-	//	//update throughput
-	//	glm::vec3 attenuation;
-	//	if (material.Metallic > 0.5f)
-	//	{
-	//		attenuation = material.Albedo; //if the material is metallic use the albedo light as the attenuation
-	//	}
-	//	else
-	//	{
-	//		attenuation = glm::vec3(1.0f);
-	//		//if the material is not metallic use white light as the attenuation
-	//	}
-	//	throughtput *= attenuation; //reduce the throughput for the next bounce based on the attenuation of the material
-	//	throughtput *= glm::mix(0.95f, 0.5f, material.Roughness); //reduce the throughput for the next bounce based on the roughness of the material
-	//	ray.Origin = payload.WorldPosition + payload.WorldNormal * 0.0001f; //offset the origin to avoid self intersection
-	//	glm::vec3 random = material.Roughness * Walnut::Random::Vec3(-0.5f, 0.5f); //add some randomness to the reflection based on the roughness of the material
-	//	ray.Direction = glm::reflect(ray.Direction, payload.WorldNormal + material.Roughness * Walnut::Random::Vec3(-0.5f, 0.5f)); //reflect the ray direction based on the normal
 	Ray ray;
 	ray.Origin = m_ActiveCamera->GetPosition();
 	ray.Direction = m_ActiveCamera->GetRayDirections()[x + y * m_FinalImage->GetWidth()];
@@ -120,22 +77,34 @@ glm::vec4 Renderer::PerPixel(uint32_t x, uint32_t y)
 		if (payload.HitDistance < 0.0f)
 		{
 			glm::vec3 skyColor = glm::vec3(0.6f, 0.7f, 0.9f); //light blue light for the sky
-			//light += skyColor * throughput;
+			light += skyColor * throughput;
 			break;
 		}
 
 		const Sphere& sphere = m_ActiveScene->Spheres[payload.ObjectIndex];
 		const Material& material = m_ActiveScene->Materials[sphere.MaterialIndex];
-		glm::vec3 attenuation =	glm::mix(glm::vec3(1.0f), material.Albedo, material.Metallic);
-		throughput *= attenuation;
-		light += material.GetEmission();
+		/*glm::vec3 attenuation = glm::mix(glm::vec3(1.0f), material.Albedo, material.Metallic);
+		throughput *= attenuation;*/
+		throughput *= material.Albedo;
+		light += throughput * material.GetEmission();
 
 		ray.Origin = payload.WorldPosition + payload.WorldNormal * 0.0001f; //offset the origin to avoid self intersection
-		glm::vec3 diffuseDirection = glm::normalize(payload.WorldNormal + Walnut::Random::InUnitSphere());
+		glm::vec3 diffuseDirection = payload.WorldNormal + Walnut::Random::InUnitSphere();
+		if (glm::dot(diffuseDirection,payload.WorldNormal) < 0.0f)
+		{
+			diffuseDirection = -diffuseDirection;
+		}
+		diffuseDirection = glm::normalize(diffuseDirection);
 		glm::vec3 reflectedDirection = glm::reflect(ray.Direction, payload.WorldNormal);
-		reflectedDirection += material.Roughness * Walnut::Random::InUnitSphere();
-		reflectedDirection = glm::normalize(reflectedDirection);
-		ray.Direction = glm::normalize(glm::mix(diffuseDirection, reflectedDirection, material.Metallic));
+		reflectedDirection = glm::normalize(reflectedDirection + material.Roughness * Walnut::Random::InUnitSphere());
+		if (glm::dot(reflectedDirection,payload.WorldNormal) <= 0.0f)
+		{
+			reflectedDirection = glm::reflect(ray.Direction, payload.WorldNormal);
+		}
+		if(Walnut::Random::Float()<material.Metallic)
+			ray.Direction = reflectedDirection;
+		else
+			ray.Direction = diffuseDirection;
 	}
 
 	return glm::vec4(light, 1.0f); //abgr format

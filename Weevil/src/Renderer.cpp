@@ -83,6 +83,14 @@ glm::vec4 Renderer::PerPixel(uint32_t x, uint32_t y)
 
 		const Sphere& sphere = m_ActiveScene->Spheres[payload.ObjectIndex];
 		const Material& material = m_ActiveScene->Materials[sphere.MaterialIndex];
+
+		glm::vec3 F0(0.04f); //default reflectivity for non-metals
+		//metal use their albedo as reflectance
+		F0 = glm::mix(F0, material.Albedo, material.Metallic);
+
+		float cosTheta = glm::max(glm::dot(-ray.Direction, payload.WorldNormal), 0.0f);
+		glm::vec3 fresnel = FresnelSchlick(cosTheta, F0);
+
 		/*glm::vec3 attenuation = glm::mix(glm::vec3(1.0f), material.Albedo, material.Metallic);
 		throughput *= attenuation;*/
 		throughput *= material.Albedo;
@@ -101,7 +109,8 @@ glm::vec4 Renderer::PerPixel(uint32_t x, uint32_t y)
 		{
 			reflectedDirection = glm::reflect(ray.Direction, payload.WorldNormal);
 		}
-		if(Walnut::Random::Float()<material.Metallic)
+		float reflectionProbability = glm::compMax(fresnel);
+		if(Walnut::Random::Float()<reflectionProbability)
 			ray.Direction = reflectedDirection;
 		else
 			ray.Direction = diffuseDirection;
@@ -330,6 +339,11 @@ void Renderer::CombineBloom()
 		glm::vec4 bloom = m_BloomImage[index] * bloomStrength;
 		m_HDRImage[index] += bloom;
 	});
+}
+
+glm::vec3 Renderer::FresnelSchlick(float cosTheta, const glm::vec3& F0)
+{
+	return F0 + (glm::vec3(1.0f) - F0) * std::pow(1.0f - cosTheta, 5.0f);
 }
 
 void Renderer::GenerateGaussianKernal()

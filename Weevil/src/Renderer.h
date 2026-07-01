@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <glm/glm.hpp>
+#include <glm/gtx/component_wise.hpp>
 #include <execution>
 #include <algorithm>
 #include <vector>
@@ -82,6 +83,8 @@ private:
 	void BlurHorizontal();
 	void BlurVertical();
 	void CombineBloom();
+
+	glm::vec3 FresnelSchlick(float cosTheta, const glm::vec3& F0);
 	
 	glm::vec3 ReinhardToneMap(const glm::vec3& color);
 	glm::vec3 ACESToneMap(const glm::vec3& color);

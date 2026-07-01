@@ -158,6 +158,23 @@ public:
 		}
 		ImGui::Separator();
 
+		if (ImGui::TreeNodeEx("Path Tracing", ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			bool changed = false;
+			changed |= ImGui::Checkbox(
+				"Russian Roulette",
+				&m_Renderer.GetSettings().EnableRussianRoulette);
+			changed |= ImGui::SliderInt(
+				"Max Bounces",
+				&m_Renderer.GetSettings().MaxBounces,
+				1,
+				20);
+			if (changed)
+				m_Renderer.ResertFrameIndex();
+			ImGui::TreePop();
+		}
+		ImGui::Separator();
+
 		//reset button
 		if(ImGui::Button("Reset"))
 			m_Renderer.ResertFrameIndex();

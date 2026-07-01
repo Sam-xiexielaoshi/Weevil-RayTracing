@@ -39,6 +39,8 @@ public:
 		ToneMapper ToneMapping = ToneMapper::ACES;
 		float Exposure = 1.0f;
 		float Gamma = 2.2f;
+		bool EnableRussianRoulette = true;
+		int MaxBounces = 5;
 	};
 public:
 	Renderer() = default;

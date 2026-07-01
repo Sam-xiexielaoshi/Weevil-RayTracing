@@ -70,7 +70,7 @@ glm::vec4 Renderer::PerPixel(uint32_t x, uint32_t y)
 	glm::vec3 light(0.0f);
 	glm::vec3 throughput(1.0f);
 
-	int bounces = 5; //number of bounces for the ray
+	const int bounces = m_Settings.MaxBounces;//now instead of using a fixed bounce amt to terminate we will implement russian roulette to terminate the ray if it has a low probability of contributing to the final image
 	for (int i = 0; i < bounces; i++)
 	{
 		Renderer::HitPayload payload = TraceRay(ray);
@@ -114,6 +114,17 @@ glm::vec4 Renderer::PerPixel(uint32_t x, uint32_t y)
 			ray.Direction = reflectedDirection;
 		else
 			ray.Direction = diffuseDirection;
+
+		//russain roulette termination
+		if (m_Settings.EnableRussianRoulette && i <= 2)
+		{
+			float survivalProbability = glm::max(throughput.r, glm::max(throughput.g, throughput.b));
+			survivalProbability = glm::clamp(survivalProbability, 0.05f, 0.95f);
+			if(Walnut::Random::Float() > survivalProbability)
+				break;
+
+			throughput /= survivalProbability;
+		}
 	}
 
 	return glm::vec4(light, 1.0f); //abgr format

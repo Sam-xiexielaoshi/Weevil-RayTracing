@@ -224,37 +224,90 @@ public:
 			for (size_t i = 0; i < m_Scene.Materials.size(); i++)
 			{
 				ImGui::PushID(i);
-				std::string label =
-					"Material " + std::to_string(i);
+				std::string label = "Material " + std::to_string(i);
 				if (ImGui::TreeNode(label.c_str()))
 				{
-					Material& material =
-						m_Scene.Materials[i];
+					Material& material = m_Scene.Materials[i];
 					bool materialChanged = false;
+					// Material Type
+					const char* materialTypes[]
+					{
+						"Diffuse",
+						"Metal",
+						"Glass"
+					};
+					int currentType = static_cast<int>(material.Type);
+					if (ImGui::Combo(
+						"Material Type",
+						&currentType,
+						materialTypes,
+						IM_ARRAYSIZE(materialTypes)))
+					{
+						material.Type = static_cast<MaterialType>(currentType);
+						// Reset properties that don't belong
+						switch (material.Type)
+						{
+						case MaterialType::Diffuse:
+							material.Metallic = 0.0f;
+							material.RefractionIndex = 1.52f;
+							break;
+
+						case MaterialType::Metal:
+							material.RefractionIndex = 1.52f;
+							break;
+
+						case MaterialType::Dielectric:
+							material.Metallic = 0.0f;
+							break;
+						}
+						materialChanged = true;
+					}
+					// Surface
 					materialChanged |= ImGui::ColorEdit3(
 						"Albedo",
 						glm::value_ptr(material.Albedo));
+
 					materialChanged |= ImGui::DragFloat(
 						"Roughness",
 						&material.Roughness,
 						0.05f,
 						0.0f,
 						1.0f);
-					materialChanged |= ImGui::DragFloat(
-						"Metallic",
-						&material.Metallic,
-						0.05f,
-						0.0f,
-						1.0f);
+
+					if (material.Type == MaterialType::Metal)
+					{
+						materialChanged |= ImGui::DragFloat(
+							"Metallic",
+							&material.Metallic,
+							0.05f,
+							0.0f,
+							1.0f);
+					}
+
+					if (material.Type == MaterialType::Dielectric)
+					{
+						materialChanged |= ImGui::DragFloat(
+							"IOR",
+							&material.RefractionIndex,
+							0.01f,
+							1.0f,
+							2.5f,
+							"%.2f");
+					}
+					ImGui::Separator();
+					// Emission
+
 					materialChanged |= ImGui::ColorEdit3(
 						"Emission Color",
 						glm::value_ptr(material.EmissionColor));
+
 					materialChanged |= ImGui::DragFloat(
 						"Emission Power",
 						&material.EmissionPower,
 						0.1f,
 						0.0f,
 						FLT_MAX);
+
 					if (materialChanged)
 						m_Renderer.ResertFrameIndex();
 					ImGui::TreePop();

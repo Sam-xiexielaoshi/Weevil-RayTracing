@@ -14,7 +14,7 @@ class ExampleLayer : public Walnut::Layer
 {
 public:
 
-	ExampleLayer() : m_Camera(45.0f, 0.1f, 100.0f) 
+	ExampleLayer() : m_Camera(60.0f, 0.1f, 100.0f) 
 	{
 		Material& pinkSphere = m_Scene.Materials.emplace_back();
 		pinkSphere.Albedo = { 1.0f, 0.0f, 1.0f };
@@ -180,6 +180,8 @@ public:
 		if(ImGui::Button("Reset"))
 			m_Renderer.ResertFrameIndex();
 
+		ImGui::Text("Frame Index: %u", m_Renderer.GetFinalIndex());
+
 		ImGui::End();
 
 		ImGui::Begin("Scene");
@@ -315,6 +317,37 @@ public:
 				}
 				ImGui::PopID();
 			}
+			ImGui::TreePop();
+		}
+		if (ImGui::TreeNodeEx("Environment", ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			bool changed = false;
+
+			static float exposure = 1.0f;
+			static float rotation = 0.0f;
+
+			changed |= ImGui::DragFloat(
+				"Exposure",
+				&exposure,
+				0.05f,
+				0.0f,
+				10.0f);
+
+			changed |= ImGui::DragFloat(
+				"Rotation",
+				&rotation,
+				1.0f,
+				0.0f,
+				360.0f);
+
+			if (changed)
+			{
+				m_Renderer.GetEnvironment().SetExposure(exposure);
+				m_Renderer.GetEnvironment().SetRotation(rotation);
+
+				m_Renderer.ResertFrameIndex();
+			}
+
 			ImGui::TreePop();
 		}
 

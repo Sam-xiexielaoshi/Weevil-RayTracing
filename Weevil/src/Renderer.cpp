@@ -2,6 +2,14 @@
 #include "Walnut/Random.h"
 #include <execution>
 
+Renderer::Renderer()
+{
+	if (!m_Environment.LoadHDR("assets/HDR/studio_small_08_4k.hdr"))
+	{
+		std::cout << "Failed to load HDR image" << std::endl;
+	}
+}
+
 namespace Utils
 {
 	static uint32_t ConvertToRGBA(const glm::vec4& light)
@@ -76,7 +84,7 @@ glm::vec4 Renderer::PerPixel(uint32_t x, uint32_t y)
 		Renderer::HitPayload payload = TraceRay(ray);
 		if (payload.HitDistance < 0.0f)
 		{
-			AddSkyLight(light, throughput);
+			AddSkyLight(light, throughput, ray);
 			break;
 		}
 
@@ -84,7 +92,7 @@ glm::vec4 Renderer::PerPixel(uint32_t x, uint32_t y)
 		const Material& material = m_ActiveScene->Materials[sphere.MaterialIndex];
 
 		AddEmission(light, throughput, material);
-		OffsetRayOrigin(ray, payload);
+	
 
 		switch (material.Type)
 		{
@@ -104,10 +112,11 @@ glm::vec4 Renderer::PerPixel(uint32_t x, uint32_t y)
 				break;
 			}
 		}
+		OffsetRayOrigin(ray, payload);
 		if (!RussianRouletter(throughput, i))
 			break;
 	}
-
+	
 	return glm::vec4(light, 1.0f); //abgr format
 }
 
@@ -414,13 +423,26 @@ glm::vec3 Renderer::SampleMetal(const Ray& ray, const HitPayload& payload, const
 
 glm::vec3 Renderer::SampleDielectric(const Ray& ray, const HitPayload& payload, const Material& material, glm::vec3& throughput)
 {
+	throughput *= glm::vec3(1.0f);
 	bool frontFace = glm::dot(ray.Direction, payload.WorldNormal) < 0.0f;
-
 	glm::vec3 normal = frontFace ? payload.WorldNormal : -payload.WorldNormal;
-	float eta = frontFace ? (1.0f / material.RefractionIndex) : material.RefractionIndex;
 
-	//temp
-	return glm::reflect(ray.Direction, normal);
+	float eta =	frontFace ?	(1.0f / material.RefractionIndex) :	material.RefractionIndex;
+
+	float cosTheta = glm::abs(glm::dot(ray.Direction, normal));
+	float sinTheta = glm::sqrt(1.0f - cosTheta * cosTheta);
+
+	bool cannotRefract = eta * sinTheta > 1.0f;
+
+	glm::vec3 F0 = glm::vec3(std::pow((1.0f - material.RefractionIndex) / (1.0f + material.RefractionIndex), 2.0f));
+
+	float reflectProbability = FresnelSchlick(cosTheta, F0).r;
+
+	if (cannotRefract || Walnut::Random::Float() < reflectProbability)
+	{
+		return glm::normalize(glm::reflect(ray.Direction, normal));
+	}
+	return glm::normalize(glm::refract(ray.Direction, normal, eta));
 }
 
 bool Renderer::RussianRouletter(glm::vec3& throughput, int bounce)
@@ -440,9 +462,9 @@ bool Renderer::RussianRouletter(glm::vec3& throughput, int bounce)
 	return true;
 }
 
-void Renderer::AddSkyLight(glm::vec3& light, const glm::vec3& throughput)
+void Renderer::AddSkyLight(glm::vec3& light, const glm::vec3& throughput, const Ray& ray)
 {
-	glm::vec3 skyColor = glm::vec3(0.6f, 0.7f, 0.9f); //light blue light for the sky
+	glm::vec3 skyColor = m_Environment.Sample(ray.Direction); // Sample the environment map in the upward direction
 	light += skyColor * throughput;
 }
 
@@ -453,24 +475,12 @@ void Renderer::AddEmission(glm::vec3& light, glm::vec3& throughput, const Materi
 
 void Renderer::OffsetRayOrigin(Ray& ray, const HitPayload& payload)
 {
-	ray.Origin = payload.WorldPosition + payload.WorldNormal * 0.0001f;
-
+	constexpr float bias = 0.0001f;
+	ray.Origin = payload.WorldPosition + ray.Direction * bias;
 }
 
 Renderer::HitPayload Renderer::TraceRay(const Ray& ray)
 {
-	//ray eq -> p(t) = rayOrigin + t * rayDirection
-	//sphere eq -> |spherecenter - sphereradius|^2 = r^2
-	//sub the ray eq into the sphere eq and we get -> |(rayOrigin + t * rayDirection) - sphereCenter|^2 = r^2
-	//assuming , spherecenter is at the origin we can simplify the eq to -> |(rayOrigin + t * rayDirection)|^2 = r^2
-	//expanding the eq we get -> |rayOrigin|^2 + 2t(rayOrigin . rayDirection) + t^2 |rayDirection|^2 = r^2
-	//using the formula
-	//(bx^2 + by^2)t^2 + (2axbx + 2ayby)t + (ax^2 + ay^2 - r^2) = 0
-	// a = ray origin 
-	// b = ray direction 
-	// r = radius
-	// t = hit radius
-
 	int closestSphere = -1;
 	float hitDistance = std::numeric_limits<float>::max();
 	for (size_t i = 0; i < m_ActiveScene->Spheres.size(); i++)
@@ -487,11 +497,17 @@ Renderer::HitPayload Renderer::TraceRay(const Ray& ray)
 		if (discriminant < 0.0f)
 			continue;
 
-		//float t0 = (-b + glm::sqrt(discriminant)) / (2.0f * a);
-		float closestT = (-b - glm::sqrt(discriminant)) / (2.0f * a);
-		if(closestT < hitDistance && closestT > 0.0f)
+		constexpr float tMin = 0.001f;
+		float sqrtD = glm::sqrt(discriminant);
+		float t0 = (-b - sqrtD) / (2.0f * a);
+		float t1 = (-b + sqrtD) / (2.0f * a);
+
+		float t = t0;
+
+		if (t < tMin) t = t1;
+		if (t > tMin && t < hitDistance)
 		{
-			hitDistance = closestT;
+			hitDistance = t;
 			closestSphere = static_cast<int>(i);
 		}
 	}
@@ -510,11 +526,12 @@ Renderer::HitPayload Renderer::ClosestHit(const Ray& ray, float hitDistance, int
 
 	const Sphere& closestSphere = m_ActiveScene->Spheres[objectIndex];
 
-	glm::vec3 origin = ray.Origin - closestSphere.Position;
-	payload.WorldPosition = origin + hitDistance * ray.Direction;//comp hit poiint
-	payload.WorldNormal = glm::normalize(payload.WorldPosition);//comp normal
+	glm::vec3 origin = ray.Origin - closestSphere.Position; 
+	payload.WorldPosition =
+		ray.Origin + hitDistance * ray.Direction;
 
-	payload.WorldPosition += closestSphere.Position; //translate the hit point back to world space
+	payload.WorldNormal =
+		glm::normalize(payload.WorldPosition - closestSphere.Position);
 
 	return payload;
 }

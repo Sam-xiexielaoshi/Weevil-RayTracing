@@ -4,13 +4,16 @@
 #include "Camera.h"
 #include "Ray.h"
 #include "Scene.h"
+#include "Environment.h"
 
 #include <memory>
 #include <glm/glm.hpp>
 #include <glm/gtx/component_wise.hpp>
+#include <glm/gtx/norm.hpp>
 #include <execution>
 #include <algorithm>
 #include <vector>
+#include <iostream>
 
 class Renderer
 {
@@ -43,7 +46,7 @@ public:
 		int MaxBounces = 5;
 	};
 public:
-	Renderer() = default;
+	Renderer();
 
 	void OnResize(uint32_t width, uint32_t height);
 	void Render(const Scene& scene, const Camera& camera);
@@ -54,6 +57,10 @@ public:
 	Settings& GetSettings() { return m_Settings; }
 
 	void GenerateGaussianKernal();
+
+	uint32_t GetFinalIndex() const { return m_FrameIndex; }
+
+	Environment& GetEnvironment() { return m_Environment; }
 
 private:
 	struct HitPayload
@@ -98,7 +105,7 @@ private:
 
 	bool RussianRouletter(glm::vec3& throughput, int bounce);
 
-	void AddSkyLight(glm::vec3& light, const glm::vec3& throughput);
+	void AddSkyLight(glm::vec3& light, const glm::vec3& throughput, const Ray& ray);
 
 	void AddEmission(glm::vec3& light, glm::vec3& throughput, const Material& material);
 
@@ -127,7 +134,7 @@ private:
 
 	uint32_t m_FrameIndex = 1;
 
-
+	Environment m_Environment;
 };
 
 template<typename T>

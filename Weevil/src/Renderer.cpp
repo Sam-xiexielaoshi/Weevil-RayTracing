@@ -414,9 +414,13 @@ glm::vec3 Renderer::SampleMetal(const Ray& ray, const HitPayload& payload, const
 
 glm::vec3 Renderer::SampleDielectric(const Ray& ray, const HitPayload& payload, const Material& material, glm::vec3& throughput)
 {
-	return glm::reflect(
-		ray.Direction,
-		payload.WorldNormal);
+	bool frontFace = glm::dot(ray.Direction, payload.WorldNormal) < 0.0f;
+
+	glm::vec3 normal = frontFace ? payload.WorldNormal : -payload.WorldNormal;
+	float eta = frontFace ? (1.0f / material.RefractionIndex) : material.RefractionIndex;
+
+	//temp
+	return glm::reflect(ray.Direction, normal);
 }
 
 bool Renderer::RussianRouletter(glm::vec3& throughput, int bounce)

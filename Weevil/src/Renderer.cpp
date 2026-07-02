@@ -76,55 +76,36 @@ glm::vec4 Renderer::PerPixel(uint32_t x, uint32_t y)
 		Renderer::HitPayload payload = TraceRay(ray);
 		if (payload.HitDistance < 0.0f)
 		{
-			glm::vec3 skyColor = glm::vec3(0.6f, 0.7f, 0.9f); //light blue light for the sky
-			light += skyColor * throughput;
+			AddSkyLight(light, throughput);
 			break;
 		}
 
 		const Sphere& sphere = m_ActiveScene->Spheres[payload.ObjectIndex];
 		const Material& material = m_ActiveScene->Materials[sphere.MaterialIndex];
 
-		glm::vec3 F0(0.04f); //default reflectivity for non-metals
-		//metal use their albedo as reflectance
-		F0 = glm::mix(F0, material.Albedo, material.Metallic);
+		AddEmission(light, throughput, material);
+		OffsetRayOrigin(ray, payload);
 
-		float cosTheta = glm::max(glm::dot(-ray.Direction, payload.WorldNormal), 0.0f);
-		glm::vec3 fresnel = FresnelSchlick(cosTheta, F0);
-
-		/*glm::vec3 attenuation = glm::mix(glm::vec3(1.0f), material.Albedo, material.Metallic);
-		throughput *= attenuation;*/
-		throughput *= material.Albedo;
-		light += throughput * material.GetEmission();
-
-		ray.Origin = payload.WorldPosition + payload.WorldNormal * 0.0001f; //offset the origin to avoid self intersection
-		glm::vec3 diffuseDirection = payload.WorldNormal + Walnut::Random::InUnitSphere();
-		if (glm::dot(diffuseDirection,payload.WorldNormal) < 0.0f)
+		switch (material.Type)
 		{
-			diffuseDirection = -diffuseDirection;
-		}
-		diffuseDirection = glm::normalize(diffuseDirection);
-		glm::vec3 reflectedDirection = glm::reflect(ray.Direction, payload.WorldNormal);
-		reflectedDirection = glm::normalize(reflectedDirection + material.Roughness * Walnut::Random::InUnitSphere());
-		if (glm::dot(reflectedDirection,payload.WorldNormal) <= 0.0f)
-		{
-			reflectedDirection = glm::reflect(ray.Direction, payload.WorldNormal);
-		}
-		float reflectionProbability = glm::compMax(fresnel);
-		if(Walnut::Random::Float()<reflectionProbability)
-			ray.Direction = reflectedDirection;
-		else
-			ray.Direction = diffuseDirection;
-
-		//russain roulette termination
-		if (m_Settings.EnableRussianRoulette && i <= 2)
-		{
-			float survivalProbability = glm::max(throughput.r, glm::max(throughput.g, throughput.b));
-			survivalProbability = glm::clamp(survivalProbability, 0.05f, 0.95f);
-			if(Walnut::Random::Float() > survivalProbability)
+			case MaterialType::Diffuse:
+			{
+				ray.Direction = SampleDiffuse(payload, material, throughput);
 				break;
-
-			throughput /= survivalProbability;
+			}
+			case MaterialType::Metal:
+			{
+				ray.Direction =SampleMetal(ray,	payload, material, throughput);
+				break;
+			}
+			case MaterialType::Dielectric:
+			{
+				ray.Direction =	SampleDielectric(ray, payload,material, throughput);
+				break;
+			}
 		}
+		if (!RussianRouletter(throughput, i))
+			break;
 	}
 
 	return glm::vec4(light, 1.0f); //abgr format
@@ -395,6 +376,81 @@ glm::vec3 Renderer::HableToneMap(const glm::vec3& color)
 {
 	//needed to be done in future
 	return ACESToneMap(color);
+}
+
+glm::vec3 Renderer::SampleDiffuse(const HitPayload& payload, const Material& material, glm::vec3& throughput)
+{
+	throughput *= material.Albedo;
+	glm::vec3 direction = payload.WorldNormal + Walnut::Random::InUnitSphere();
+	if (glm::dot(direction, payload.WorldNormal) < 0.0f)
+	{
+		direction = -direction;
+	}
+	return glm::normalize(direction);
+}
+
+glm::vec3 Renderer::SampleMetal(const Ray& ray, const HitPayload& payload, const Material& material, glm::vec3& throughput)
+{
+	glm::vec3 F0(0.04f);
+	F0 = glm::mix(F0, material.Albedo, material.Metallic);
+
+	float cosTheta = glm::max(glm::dot(-ray.Direction, payload.WorldNormal), 0.0f);
+
+	glm::vec3 fresnel = FresnelSchlick(cosTheta, F0);
+	throughput *= fresnel * material.Albedo;
+
+	glm::vec3 reflected = glm::reflect(ray.Direction, payload.WorldNormal);
+
+	reflected += material.Roughness * Walnut::Random::InUnitSphere();
+	reflected =	glm::normalize(reflected);
+	// Prevent the ray from scattering below the surface
+	if (glm::dot(reflected, payload.WorldNormal) <= 0.0f)
+	{
+		reflected =	glm::reflect(ray.Direction, payload.WorldNormal);
+		reflected =	glm::normalize(reflected);
+	}
+	return reflected;
+}
+
+glm::vec3 Renderer::SampleDielectric(const Ray& ray, const HitPayload& payload, const Material& material, glm::vec3& throughput)
+{
+	return glm::reflect(
+		ray.Direction,
+		payload.WorldNormal);
+}
+
+bool Renderer::RussianRouletter(glm::vec3& throughput, int bounce)
+{
+	//russain roulette termination
+	if (!m_Settings.EnableRussianRoulette)
+		return true;
+	if (bounce < 2)
+		return true;
+
+	float survival = glm::max(throughput.r, glm::max(throughput.g, throughput.b));
+	survival = glm::clamp(survival, 0.05f, 0.95f);
+
+	if (Walnut::Random::Float() > survival)
+		return false;
+	throughput /= survival;
+	return true;
+}
+
+void Renderer::AddSkyLight(glm::vec3& light, const glm::vec3& throughput)
+{
+	glm::vec3 skyColor = glm::vec3(0.6f, 0.7f, 0.9f); //light blue light for the sky
+	light += skyColor * throughput;
+}
+
+void Renderer::AddEmission(glm::vec3& light, glm::vec3& throughput, const Material& material)
+{
+	light += throughput * material.GetEmission();
+}
+
+void Renderer::OffsetRayOrigin(Ray& ray, const HitPayload& payload)
+{
+	ray.Origin = payload.WorldPosition + payload.WorldNormal * 0.0001f;
+
 }
 
 Renderer::HitPayload Renderer::TraceRay(const Ray& ray)

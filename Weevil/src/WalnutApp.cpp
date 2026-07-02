@@ -164,10 +164,11 @@ public:
 			changed |= ImGui::Checkbox(
 				"Russian Roulette",
 				&m_Renderer.GetSettings().EnableRussianRoulette);
-			changed |= ImGui::SliderInt(
+			changed |= ImGui::DragInt(
 				"Max Bounces",
 				&m_Renderer.GetSettings().MaxBounces,
 				1,
+				3,
 				20);
 			if (changed)
 				m_Renderer.ResertFrameIndex();

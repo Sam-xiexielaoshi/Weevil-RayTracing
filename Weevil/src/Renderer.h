@@ -92,6 +92,18 @@ private:
 	glm::vec3 ACESToneMap(const glm::vec3& color);
 	glm::vec3 HableToneMap(const glm::vec3& color);
 
+	glm::vec3 SampleDiffuse(const HitPayload& payload, const Material& material, glm::vec3& throughput);
+	glm::vec3 SampleMetal(const Ray& ray, const HitPayload& payload, const Material& material, glm::vec3& throughput);
+	glm::vec3 SampleDielectric(const Ray& ray, const HitPayload& payload, const Material& material, glm::vec3& throughput);
+
+	bool RussianRouletter(glm::vec3& throughput, int bounce);
+
+	void AddSkyLight(glm::vec3& light, const glm::vec3& throughput);
+
+	void AddEmission(glm::vec3& light, glm::vec3& throughput, const Material& material);
+
+	void OffsetRayOrigin(Ray& ray,const HitPayload& payload);
+
 	HitPayload TraceRay(const Ray& ray);
 	HitPayload ClosestHit(const Ray& ray, float hitDistance,int objectIndex);
 	HitPayload Miss(const Ray& ray);

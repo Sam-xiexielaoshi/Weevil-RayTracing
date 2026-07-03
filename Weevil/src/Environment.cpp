@@ -59,21 +59,27 @@ glm::vec3 Environment::Sample(const glm::vec3& direction) const
 	uint32_t x = static_cast<uint32_t>(u * (m_Width - 1));
 	uint32_t y = static_cast<uint32_t>((1.0f - v) * (m_Height - 1));
 
-	x = glm::clamp(x, 0u, m_Width - 1);
-	y = glm::clamp(y, 0u, m_Height - 1);
-	glm::vec3 color = m_Pixels[y * m_Width + x];
+	float pixelX = u * (m_Width - 1);
+	float pixelY = (1.0f - v) * (m_Height - 1);
 
-	static bool printed = false;
+	uint32_t x0 = static_cast<uint32_t>(std::floor(pixelX));
+	uint32_t y0 = static_cast<uint32_t>(std::floor(pixelY));
 
-	if (!printed)
-	{
-		std::cout << "Sample = "
-			<< color.r << ", "
-			<< color.g << ", "
-			<< color.b << std::endl;
+	uint32_t x1 = std::min(x0 + 1, m_Width - 1);
+	uint32_t y1 = std::min(y0 + 1, m_Height - 1);
 
-		printed = true;
-	}
+	float tx = pixelX - (float)x0;
+	float ty = pixelY - (float)y0;
+
+	glm::vec3 c00 = m_Pixels[y0 * m_Width + x0];
+	glm::vec3 c10 = m_Pixels[y0 * m_Width + x1];
+	glm::vec3 c01 = m_Pixels[y1 * m_Width + x0];
+	glm::vec3 c11 = m_Pixels[y1 * m_Width + x1];
+
+	glm::vec top = glm::mix(c00, c10, tx);
+	glm::vec bottom = glm::mix(c01, c11, tx);
+
+	glm::vec3 color = glm::mix(top, bottom, ty);
 
 	return color * m_Exposure;
 }

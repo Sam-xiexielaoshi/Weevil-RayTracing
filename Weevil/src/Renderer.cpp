@@ -71,50 +71,54 @@ void Renderer::OnResize(uint32_t width, uint32_t height)
 
 glm::vec4 Renderer::PerPixel(uint32_t x, uint32_t y)
 {
-	PathState path;
-	path.CurrentRay.Origin = m_ActiveCamera->GetPosition();
-	path.CurrentRay.Direction = m_ActiveCamera->GetRayDirections()[y * m_FinalImage->GetWidth() + x];
+	PathState pathState;
+	pathState.CurrentRay.Origin = m_ActiveCamera->GetPosition();
+	pathState.CurrentRay.Direction = m_ActiveCamera->GetRayDirections()[y * m_FinalImage->GetWidth() + x];
 
 	const int bounces = m_Settings.MaxBounces;//now instead of using a fixed bounce amt to terminate we will implement russian roulette to terminate the ray if it has a low probability of contributing to the final image
 	for (int i = 0; i < bounces; i++)
 	{
-		Renderer::HitPayload payload = TraceRay(path.CurrentRay);
+		Renderer::HitPayload payload = TraceRay(pathState.CurrentRay);
 		if (payload.HitDistance < 0.0f)
 		{
-			AddSkyLight(path.AccumulatedRadiance, path.PathThroughput, path.CurrentRay);
+			AddSkyLight(pathState.AccumulatedRadiance, pathState.PathThroughput, pathState.CurrentRay);
 			break;
 		}
 
 		const Sphere& sphere = m_ActiveScene->Spheres[payload.ObjectIndex];
 		const Material& material = m_ActiveScene->Materials[sphere.MaterialIndex];
 
-		AddEmission(path.AccumulatedRadiance, path.PathThroughput, material);
-	
+		if (pathState.CurrentRay.InsideMedium && payload.HitDistance > 0.0f)
+		{
+			glm::vec3 transmittance = glm::exp(-pathState.CurrentRay.AbsorptionCoefficient * payload.HitDistance);
+			pathState.PathThroughput *= transmittance;
+		}
 
+		AddEmission(pathState.AccumulatedRadiance, pathState.PathThroughput, material);
 		switch (material.Type)
 		{
 			case MaterialType::Diffuse:
 			{
-				path.CurrentRay.Direction = SampleDiffuse(payload, material, path.PathThroughput);
+				pathState.CurrentRay.Direction = SampleDiffuse(payload, material, pathState.PathThroughput);
 				break;
 			}
 			case MaterialType::Metal:
 			{
-				path.CurrentRay.Direction = SampleMetal(path.CurrentRay,	payload, material, path.PathThroughput);
+				pathState.CurrentRay.Direction = SampleMetal(pathState.CurrentRay,	payload, material, pathState.PathThroughput);
 				break;
 			}
 			case MaterialType::Dielectric:
 			{
-				path.CurrentRay.Direction = SampleDielectric(path.CurrentRay, payload,material, path.PathThroughput);
+				pathState.CurrentRay.Direction = SampleDielectric(pathState.CurrentRay, payload,material, pathState.PathThroughput);
 				break;
 			}
 		}
-		OffsetRayOrigin(path.CurrentRay, payload);
-		if (!RussianRouletter(path.PathThroughput, i))
+		OffsetRayOrigin(pathState.CurrentRay, payload);
+		if (!RussianRouletter(pathState.PathThroughput, i))
 			break;
 	}
 	
-	return glm::vec4(path.AccumulatedRadiance, 1.0f); //abgr format
+	return glm::vec4(pathState.AccumulatedRadiance, 1.0f); //abgr format
 }
 
 void Renderer::Render(const Scene& scene, const Camera& camera)
@@ -418,23 +422,29 @@ glm::vec3 Renderer::SampleMetal(const Ray& ray, const HitPayload& payload, const
 	return reflected;
 }
 
-glm::vec3 Renderer::SampleDielectric(const Ray& ray, const HitPayload& payload, const Material& material, glm::vec3& throughput)
+glm::vec3 Renderer::SampleDielectric(Ray& ray, const HitPayload& payload, const Material& material, glm::vec3& throughput)
 {
-	throughput *= glm::vec3(1.0f);
 	bool frontFace = glm::dot(ray.Direction, payload.WorldNormal) < 0.0f;
 	glm::vec3 normal = frontFace ? payload.WorldNormal : -payload.WorldNormal;
-
 	float eta =	frontFace ?	(1.0f / material.RefractionIndex) :	material.RefractionIndex;
-
-	float cosTheta = glm::abs(glm::dot(ray.Direction, normal));
+	float cosTheta = glm::min(glm::dot(-ray.Direction, normal),	1.0f);
 	float sinTheta = glm::sqrt(1.0f - cosTheta * cosTheta);
-
 	bool cannotRefract = eta * sinTheta > 1.0f;
 
 	glm::vec3 F0 = glm::vec3(std::pow((1.0f - material.RefractionIndex) / (1.0f + material.RefractionIndex), 2.0f));
 
 	float reflectProbability = FresnelSchlick(cosTheta, F0).r;
-
+	// Update medium state 
+	if (frontFace)
+	{
+		ray.InsideMedium = true;
+		ray.AbsorptionCoefficient =	(glm::vec3(1.0f) - material.TransmissionColor) * material.AbsorptionStrength;
+	}
+	else
+	{
+		ray.InsideMedium = false;
+		ray.AbsorptionCoefficient =	glm::vec3(0.0f);
+	}
 	if (cannotRefract || Walnut::Random::Float() < reflectProbability)
 	{
 		return glm::normalize(glm::reflect(ray.Direction, normal));

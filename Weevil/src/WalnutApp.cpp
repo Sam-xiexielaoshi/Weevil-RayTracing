@@ -296,6 +296,17 @@ public:
 							1.0f,
 							2.5f,
 							"%.2f");
+
+						materialChanged |= ImGui::ColorEdit3(
+							"Transmission Color",
+							glm::value_ptr(material.TransmissionColor));
+
+						materialChanged |= ImGui::DragFloat(
+							"Absorption Strength",
+							&material.AbsorptionStrength,
+							0.05f,
+							0.0f,
+							10.0f);
 					}
 					ImGui::Separator();
 					// Emission

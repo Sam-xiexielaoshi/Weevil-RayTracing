@@ -24,6 +24,9 @@ struct Material
 	float EmissionPower = 0.0f;
 
 	glm::vec3 GetEmission() const { return EmissionColor * EmissionPower; }
+
+	glm::vec3 TransmissionColor = glm::vec3(1.0f);
+	float AbsorptionStrength = 0.0f;
 };
 struct Sphere
 {

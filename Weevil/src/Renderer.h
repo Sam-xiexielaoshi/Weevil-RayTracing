@@ -108,7 +108,7 @@ private:
 
 	glm::vec3 SampleDiffuse(const HitPayload& payload, const Material& material, glm::vec3& throughput);
 	glm::vec3 SampleMetal(const Ray& ray, const HitPayload& payload, const Material& material, glm::vec3& throughput);
-	glm::vec3 SampleDielectric(const Ray& ray, const HitPayload& payload, const Material& material, glm::vec3& throughput);
+	glm::vec3 SampleDielectric(Ray& ray, const HitPayload& payload, const Material& material, glm::vec3& throughput);
 
 	bool RussianRouletter(glm::vec3& throughput, int bounce);
 

@@ -71,53 +71,50 @@ void Renderer::OnResize(uint32_t width, uint32_t height)
 
 glm::vec4 Renderer::PerPixel(uint32_t x, uint32_t y)
 {
-	Ray ray;
-	ray.Origin = m_ActiveCamera->GetPosition();
-	ray.Direction = m_ActiveCamera->GetRayDirections()[x + y * m_FinalImage->GetWidth()];
-
-	glm::vec3 light(0.0f);
-	glm::vec3 throughput(1.0f);
+	PathState path;
+	path.CurrentRay.Origin = m_ActiveCamera->GetPosition();
+	path.CurrentRay.Direction = m_ActiveCamera->GetRayDirections()[y * m_FinalImage->GetWidth() + x];
 
 	const int bounces = m_Settings.MaxBounces;//now instead of using a fixed bounce amt to terminate we will implement russian roulette to terminate the ray if it has a low probability of contributing to the final image
 	for (int i = 0; i < bounces; i++)
 	{
-		Renderer::HitPayload payload = TraceRay(ray);
+		Renderer::HitPayload payload = TraceRay(path.CurrentRay);
 		if (payload.HitDistance < 0.0f)
 		{
-			AddSkyLight(light, throughput, ray);
+			AddSkyLight(path.AccumulatedRadiance, path.PathThroughput, path.CurrentRay);
 			break;
 		}
 
 		const Sphere& sphere = m_ActiveScene->Spheres[payload.ObjectIndex];
 		const Material& material = m_ActiveScene->Materials[sphere.MaterialIndex];
 
-		AddEmission(light, throughput, material);
+		AddEmission(path.AccumulatedRadiance, path.PathThroughput, material);
 	
 
 		switch (material.Type)
 		{
 			case MaterialType::Diffuse:
 			{
-				ray.Direction = SampleDiffuse(payload, material, throughput);
+				path.CurrentRay.Direction = SampleDiffuse(payload, material, path.PathThroughput);
 				break;
 			}
 			case MaterialType::Metal:
 			{
-				ray.Direction =SampleMetal(ray,	payload, material, throughput);
+				path.CurrentRay.Direction = SampleMetal(path.CurrentRay,	payload, material, path.PathThroughput);
 				break;
 			}
 			case MaterialType::Dielectric:
 			{
-				ray.Direction =	SampleDielectric(ray, payload,material, throughput);
+				path.CurrentRay.Direction = SampleDielectric(path.CurrentRay, payload,material, path.PathThroughput);
 				break;
 			}
 		}
-		OffsetRayOrigin(ray, payload);
-		if (!RussianRouletter(throughput, i))
+		OffsetRayOrigin(path.CurrentRay, payload);
+		if (!RussianRouletter(path.PathThroughput, i))
 			break;
 	}
 	
-	return glm::vec4(light, 1.0f); //abgr format
+	return glm::vec4(path.AccumulatedRadiance, 1.0f); //abgr format
 }
 
 void Renderer::Render(const Scene& scene, const Camera& camera)

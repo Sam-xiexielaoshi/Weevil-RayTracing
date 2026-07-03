@@ -72,6 +72,13 @@ private:
 		int ObjectIndex;
 	};
 
+	struct PathState
+	{
+		Ray CurrentRay;
+		glm::vec3 PathThroughput = glm::vec3(1.0f);
+		glm::vec3 AccumulatedRadiance = glm::vec3(0.0f);
+	};
+
 	glm::vec4 PerPixel(uint32_t x, uint32_t y);//raygen
 
 	template<typename T>

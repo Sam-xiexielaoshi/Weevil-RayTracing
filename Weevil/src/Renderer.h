@@ -79,6 +79,11 @@ private:
 		glm::vec3 AccumulatedRadiance = glm::vec3(0.0f);
 	};
 
+	struct Light
+	{
+		int SphereIndex;
+		int MaterialIndex;
+	};
 	glm::vec4 PerPixel(uint32_t x, uint32_t y);//raygen
 
 	template<typename T>
@@ -122,6 +127,11 @@ private:
 	HitPayload ClosestHit(const Ray& ray, float hitDistance,int objectIndex);
 	HitPayload Miss(const Ray& ray);
 
+	void BuildLightList();
+
+	glm::vec3 EstimateDirectLighting(const HitPayload& payload, const Material& material);
+	bool IsOccluded(const Ray& shadowRay, float maxDistance, int ignoredSphere);
+
 private:
 	std::shared_ptr<Walnut::Image>m_FinalImage;
 	Settings m_Settings;
@@ -142,6 +152,8 @@ private:
 	uint32_t m_FrameIndex = 1;
 
 	Environment m_Environment;
+
+	std::vector<Light> m_Lights;
 };
 
 template<typename T>

@@ -95,6 +95,10 @@ glm::vec4 Renderer::PerPixel(uint32_t x, uint32_t y)
 		}
 
 		AddEmission(pathState.AccumulatedRadiance, pathState.PathThroughput, material);
+		if (material.Type == MaterialType::Diffuse)
+		{
+			pathState.AccumulatedRadiance += pathState.PathThroughput * EstimateDirectLighting(payload, material);
+		}
 		switch (material.Type)
 		{
 			case MaterialType::Diffuse:
@@ -125,6 +129,8 @@ void Renderer::Render(const Scene& scene, const Camera& camera)
 {
 	m_ActiveScene = &scene;
 	m_ActiveCamera = &camera;
+
+	BuildLightList();
 
 	if (m_FrameIndex == 1)
 		memset(m_AccumulationData, 0, m_FinalImage->GetWidth() * m_FinalImage->GetHeight() * sizeof(glm::vec4));
@@ -548,4 +554,98 @@ Renderer::HitPayload Renderer::Miss(const Ray& ray)
 	Renderer::HitPayload payload;
 	payload.HitDistance = -1.0f;
 	return payload;
+}
+
+void Renderer::BuildLightList()
+{
+	m_Lights.clear();
+	for (size_t i = 0; i < m_ActiveScene->Spheres.size(); i++)
+	{
+		const Sphere& sphere = m_ActiveScene->Spheres[i];
+		const Material& material = m_ActiveScene->Materials[sphere.MaterialIndex];
+		if(material.EmissionPower > 0.0f)
+			m_Lights.push_back({ static_cast<int>(i), sphere.MaterialIndex });
+	}
+}
+
+glm::vec3 Renderer::EstimateDirectLighting(const HitPayload& payload, const Material& material)
+{
+	if(m_Lights.empty())
+		return glm::vec3(0.0f);
+	int lightIndex = Walnut::Random::UInt() % m_Lights.size();
+	const Light& light = m_Lights[lightIndex];
+	const Sphere& sphere = m_ActiveScene->Spheres[light.SphereIndex];
+	const Material& lightMaterial = m_ActiveScene->Materials[light.MaterialIndex];
+	
+	//uniform sphere ssampleing
+	float u = Walnut::Random::Float();
+	float v = Walnut::Random::Float();
+
+	float theta = 2.0f * glm::pi<float>() * u;
+	float phi = glm::acos(1.0f - 2.0f * v);
+
+	glm::vec3 samplePoint;
+	samplePoint.x = sin(phi) * cos(theta);
+	samplePoint.y = cos(phi);
+	samplePoint.z = sin(phi) * sin(theta);
+
+	samplePoint = sphere.Position + samplePoint * sphere.Radius;
+
+	//direction from shafding point to sasmpled point
+	glm::vec3 toLight = samplePoint - payload.WorldPosition;
+	glm::vec3 lightNormal = glm::normalize(samplePoint - sphere.Position);
+
+
+	float distance2 = glm::dot(toLight, toLight);
+	float distance = glm::sqrt(distance2);
+	glm::vec3 lightDirection = toLight/distance;
+
+	float lightCos = glm::max(glm::dot(lightNormal, -lightDirection), 0.0f);
+	
+	if(lightCos <= 0.0f)
+		return glm::vec3(0.0f);
+	
+	constexpr float kRayBias = 1e-4f;
+	Ray shadowRay;
+	shadowRay.Origin = payload.WorldPosition + payload.WorldNormal * kRayBias;
+	shadowRay.Direction = lightDirection;
+	if (IsOccluded(shadowRay, distance, light.SphereIndex))
+		return glm::vec3(0.0f);
+	
+	float NdotL = glm::max(glm::dot(payload.WorldNormal, lightDirection), 0.0f);
+
+	if(NdotL <= 0.0f)
+		return glm::vec3(0.0f);
+
+	float pdf = 1.0f / (4.0f * glm::pi<float>() * sphere.Radius * sphere.Radius);
+	glm::vec3 brdf = material.Albedo / glm::pi<float>();
+	glm::vec3 radiance = lightMaterial.GetEmission() * brdf * NdotL * lightCos / distance2;
+	radiance /= pdf;
+	radiance *= static_cast<float>(m_Lights.size());
+	return radiance;
+}
+
+bool Renderer::IsOccluded(const Ray& shadowRay, float maxDistance, int ignoredSphere)
+{
+	for (size_t i = 0; i < m_ActiveScene->Spheres.size(); i++)
+	{
+		if (static_cast<int>(i) == ignoredSphere) continue;
+		const Sphere& sphere = m_ActiveScene->Spheres[i];
+		glm::vec3 origin = shadowRay.Origin - sphere.Position;
+
+		float a = glm::dot(shadowRay.Direction, shadowRay.Direction);
+		float b = 2.0f * glm::dot(origin, shadowRay.Direction);
+		float c = glm::dot(origin, origin) - sphere.Radius * sphere.Radius;
+		float discriminant = b * b - 4.0f * a * c;
+
+		if (discriminant < 0.0f) continue;
+
+		float sqrtD = sqrt(discriminant);
+		float t0 = (-b - sqrtD) / (2.0f * a);
+		float t1 = (-b + sqrtD) / (2.0f * a);
+
+		if (t0 > 0.001f && t0 < maxDistance) return true;
+		if (t1 > 0.001f && t1 < maxDistance) return true;
+	}
+	return false;
 }

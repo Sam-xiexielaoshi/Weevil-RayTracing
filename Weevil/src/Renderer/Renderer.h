@@ -1,10 +1,10 @@
 #pragma once
 #include "Walnut/Image.h"
 
-#include "Camera.h"
-#include "Ray.h"
-#include "Scene.h"
-#include "Environment.h"
+#include "../Core/Camera.h"
+#include "../Scene/Ray.h"
+#include "../Scene/Scene.h"
+#include "../Scene/Environment.h"
 
 #include <memory>
 #include <glm/glm.hpp>
@@ -32,7 +32,7 @@ public:
 	};
 	struct Settings
 	{
-		bool Accumate = true;
+		bool Accumulate = true;
 		bool SlowRandom = true;
 		BloomFilter BloomFilter = BloomFilter::Gaussian;
 		float BloomThreshold = 1.0f;
@@ -53,10 +53,10 @@ public:
 
 	std::shared_ptr<Walnut::Image> GetFinalImage() const { return m_FinalImage; }
 
-	void ResertFrameIndex() { m_FrameIndex = 1; }
+	void ResetFrameIndex() { m_FrameIndex = 1; }
 	Settings& GetSettings() { return m_Settings; }
 
-	void GenerateGaussianKernal();
+	void GenerateGaussianKernel();
 
 	uint32_t GetFinalIndex() const { return m_FrameIndex; }
 
@@ -84,7 +84,7 @@ private:
 		int SphereIndex;
 		int MaterialIndex;
 	};
-	glm::vec4 PerPixel(uint32_t x, uint32_t y);//raygen
+	glm::vec4 Integrate(uint32_t x, uint32_t y);//raygen
 
 	template<typename T>
 	void ForEachPixel(T&& t);
@@ -115,7 +115,7 @@ private:
 	glm::vec3 SampleMetal(const Ray& ray, const HitPayload& payload, const Material& material, glm::vec3& throughput);
 	glm::vec3 SampleDielectric(Ray& ray, const HitPayload& payload, const Material& material, glm::vec3& throughput);
 
-	bool RussianRouletter(glm::vec3& throughput, int bounce);
+	bool RussianRoulette(glm::vec3& throughput, int bounce);
 
 	void AddSkyLight(glm::vec3& light, const glm::vec3& throughput, const Ray& ray);
 

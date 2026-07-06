@@ -4,8 +4,8 @@
 #include "Walnut/Image.h"
 #include "Walnut/Timer.h"
 
-#include "Renderer.h"
-#include "Camera.h"
+#include "Renderer/Renderer.h"
+#include "Core/Camera.h"
 #include <glm/gtc/type_ptr.hpp>
 
 using namespace Walnut;
@@ -58,7 +58,7 @@ public:
 	virtual void OnUpdate(float ts) override
 	{
 		if(m_Camera.OnUpdate(ts))
-			m_Renderer.ResertFrameIndex();
+			m_Renderer.ResetFrameIndex();
 	}
 	virtual void OnUIRender() override
 	{
@@ -69,8 +69,8 @@ public:
 			Render();
 		}
 		
-		//accumate checkbox ui
-		ImGui::Checkbox("Accumulate", &m_Renderer.GetSettings().Accumate);
+		//accumulate checkbox ui
+		ImGui::Checkbox("Accumulate", &m_Renderer.GetSettings().Accumulate);
 		ImGui::Separator();
 
 		//Tone MApper settings ui
@@ -108,7 +108,7 @@ public:
 				0.0f,
 				5.0f);
 			if (toneMappingChanged)
-				m_Renderer.ResertFrameIndex();
+				m_Renderer.ResetFrameIndex();
 			ImGui::TreePop();
 		}
 		ImGui::Separator();
@@ -151,8 +151,8 @@ public:
 
 			if (bloomChanged)
 			{
-				m_Renderer.GenerateGaussianKernal();
-				m_Renderer.ResertFrameIndex();
+				m_Renderer.GenerateGaussianKernel();
+				m_Renderer.ResetFrameIndex();
 			}
 			ImGui::TreePop();
 		}
@@ -171,14 +171,14 @@ public:
 				3,
 				20);
 			if (changed)
-				m_Renderer.ResertFrameIndex();
+				m_Renderer.ResetFrameIndex();
 			ImGui::TreePop();
 		}
 		ImGui::Separator();
 
 		//reset button
 		if(ImGui::Button("Reset"))
-			m_Renderer.ResertFrameIndex();
+			m_Renderer.ResetFrameIndex();
 
 		ImGui::Text("Frame Index: %u", m_Renderer.GetFinalIndex());
 
@@ -212,7 +212,7 @@ public:
 						0,
 						(int)m_Scene.Materials.size() - 1);
 					if (sphereChanged)
-						m_Renderer.ResertFrameIndex();
+						m_Renderer.ResetFrameIndex();
 					ImGui::TreePop();
 				}
 				ImGui::PopID();
@@ -323,7 +323,7 @@ public:
 						FLT_MAX);
 
 					if (materialChanged)
-						m_Renderer.ResertFrameIndex();
+						m_Renderer.ResetFrameIndex();
 					ImGui::TreePop();
 				}
 				ImGui::PopID();
@@ -356,7 +356,7 @@ public:
 				m_Renderer.GetEnvironment().SetExposure(exposure);
 				m_Renderer.GetEnvironment().SetRotation(rotation);
 
-				m_Renderer.ResertFrameIndex();
+				m_Renderer.ResetFrameIndex();
 			}
 
 			ImGui::TreePop();

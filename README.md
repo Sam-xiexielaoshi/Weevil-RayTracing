@@ -41,14 +41,41 @@ The project currently focuses on a simple ray tracing pipeline rendered inside a
 
 ## Roadmap
 
-- Multiple spheres and general scene object support
-- Camera controls for moving and rotating the view
-- Material system for diffuse, reflective, and emissive surfaces
-- Shadow rays and multiple light sources
-- Anti-aliasing via multi-sampling
-- Reflection and refraction support
-- Acceleration structures such as BVH for better performance
-- More robust scene management and serialization
+✓ Lambertian Diffuse
+✓ Metal
+✓ Glass / Dielectric
+✓ HDR Rendering
+✓ HDRI Environment Maps
+✓ Bilinear HDR Sampling
+✓ Bloom
+✓ Tone Mapping
+✓ Russian Roulette
+✓ Beer-Lambert Absorption
+✓ Next Event Estimation
+
+✓ Renderer Refactoring
+✓ Geometry Module
+✓ Shared Primitive Intersection
+✓ AABB
+✓ BVH Builder
+✓ BVH Traversal
+✓ BVH Integration
+✓ Runtime BVH Toggle
+
+──────────────────────────────────────
+
+⬜ Renderer Statistics Panel
+⬜ GGX Microfacet BRDF
+⬜ Fresnel-Schlick GGX
+⬜ Importance Sampling
+⬜ Multiple Importance Sampling (MIS)
+⬜ Area Lights
+⬜ Triangle Meshes
+⬜ Triangle BVH
+⬜ Depth of Field
+⬜ Motion Blur
+⬜ Volumetrics
+⬜ Disney Principled BRDF
 
 ## Optimization Paths
 

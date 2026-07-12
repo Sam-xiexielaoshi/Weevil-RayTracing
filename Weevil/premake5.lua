@@ -5,7 +5,7 @@ project "Weevil"
    targetdir "bin/%{cfg.buildcfg}"
    staticruntime "off"
 
-   files { "src/**.h", "src/**.cpp" }
+   files { "src/**.h", "src/**.cpp", "src/Renderer/BVH/BVH.cpp" }
 
    includedirs
    {

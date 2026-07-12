@@ -1,4 +1,14 @@
 #include "Renderer.h"
+#include "HitPayload.h"
+#include "Geometry/Geometry.h"
+
+HitPayload Renderer::TraceRay(const Ray& ray)
+{
+	if (m_Settings.UseBVH)
+		return m_BVH.TraceRay(*m_ActiveScene, ray);
+
+	return TraceRayBruteForce(ray);
+}
 
 void Renderer::OffsetRayOrigin(Ray& ray, const HitPayload& payload)
 {
@@ -6,33 +16,17 @@ void Renderer::OffsetRayOrigin(Ray& ray, const HitPayload& payload)
 	ray.Origin = payload.WorldPosition + ray.Direction * bias;
 }
 
-Renderer::HitPayload Renderer::TraceRay(const Ray& ray)
+HitPayload Renderer::TraceRayBruteForce(const Ray& ray)
 {
 	int closestSphere = -1;
 	float hitDistance = std::numeric_limits<float>::max();
 	for (size_t i = 0; i < m_ActiveScene->Spheres.size(); i++)
 	{
 		const Sphere& sphere = m_ActiveScene->Spheres[i];
-		glm::vec3 origin = ray.Origin - sphere.Position; //origin is the vector from the ray origin to the sphere center
-
-		float a = glm::dot(ray.Direction, ray.Direction); //ray origin
-		float b = 2.0f * glm::dot(origin, ray.Direction); //ray direction
-		float c = glm::dot(origin, origin) - sphere.Radius * sphere.Radius; //since we are assuming the sphere center is at the origin we can simplify the eq to this
-		//quad eq formual discriminant = b^2 - 4ac
-		float discriminant = b * b - 4.0f * a * c;
-
-		if (discriminant < 0.0f)
+		float t;
+		if(!Geometry::IntersectSphere(ray, sphere, t))
 			continue;
-
-		constexpr float tMin = 0.001f;
-		float sqrtD = glm::sqrt(discriminant);
-		float t0 = (-b - sqrtD) / (2.0f * a);
-		float t1 = (-b + sqrtD) / (2.0f * a);
-
-		float t = t0;
-
-		if (t < tMin) t = t1;
-		if (t > tMin && t < hitDistance)
+		if (t < hitDistance)
 		{
 			hitDistance = t;
 			closestSphere = static_cast<int>(i);
@@ -45,9 +39,9 @@ Renderer::HitPayload Renderer::TraceRay(const Ray& ray)
 	return ClosestHit(ray, hitDistance, closestSphere);
 }
 
-Renderer::HitPayload Renderer::ClosestHit(const Ray& ray, float hitDistance, int objectIndex)
+HitPayload Renderer::ClosestHit(const Ray& ray, float hitDistance, int objectIndex)
 {
-	Renderer::HitPayload payload;
+	HitPayload payload;
 	payload.HitDistance = hitDistance;
 	payload.ObjectIndex = objectIndex;
 
@@ -63,9 +57,9 @@ Renderer::HitPayload Renderer::ClosestHit(const Ray& ray, float hitDistance, int
 	return payload;
 }
 
-Renderer::HitPayload Renderer::Miss(const Ray& ray)
+HitPayload Renderer::Miss(const Ray& ray)
 {
-	Renderer::HitPayload payload;
+	HitPayload payload;
 	payload.HitDistance = -1.0f;
 	return payload;
 }
@@ -76,21 +70,9 @@ bool Renderer::IsOccluded(const Ray& shadowRay, float maxDistance, int ignoredSp
 	{
 		if (static_cast<int>(i) == ignoredSphere) continue;
 		const Sphere& sphere = m_ActiveScene->Spheres[i];
-		glm::vec3 origin = shadowRay.Origin - sphere.Position;
-
-		float a = glm::dot(shadowRay.Direction, shadowRay.Direction);
-		float b = 2.0f * glm::dot(origin, shadowRay.Direction);
-		float c = glm::dot(origin, origin) - sphere.Radius * sphere.Radius;
-		float discriminant = b * b - 4.0f * a * c;
-
-		if (discriminant < 0.0f) continue;
-
-		float sqrtD = sqrt(discriminant);
-		float t0 = (-b - sqrtD) / (2.0f * a);
-		float t1 = (-b + sqrtD) / (2.0f * a);
-
-		if (t0 > 0.001f && t0 < maxDistance) return true;
-		if (t1 > 0.001f && t1 < maxDistance) return true;
+		float t;
+		if (Geometry::IntersectSphere(shadowRay, sphere, t) && t < maxDistance)
+			return true;
 	}
 	return false;
 }

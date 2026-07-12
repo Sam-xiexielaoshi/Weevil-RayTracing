@@ -1,10 +1,12 @@
 #pragma once
 #include "Walnut/Image.h"
 
+#include "BVH/BVH.h"
 #include "../Core/Camera.h"
 #include "../Scene/Ray.h"
 #include "../Scene/Scene.h"
 #include "../Scene/Environment.h"
+#include "HitPayload.h"
 
 #include <memory>
 #include <glm/glm.hpp>
@@ -34,6 +36,7 @@ public:
 	{
 		bool Accumulate = true;
 		bool SlowRandom = true;
+		bool UseBVH = true;
 		BloomFilter BloomFilter = BloomFilter::Gaussian;
 		float BloomThreshold = 1.0f;
 		//bool ShowBloomBuffer = true;
@@ -63,14 +66,6 @@ public:
 	Environment& GetEnvironment() { return m_Environment; }
 
 private:
-	struct HitPayload
-	{
-		float HitDistance;
-		glm::vec3 WorldPosition;
-		glm::vec3 WorldNormal;
-
-		int ObjectIndex;
-	};
 
 	struct PathState
 	{
@@ -123,6 +118,7 @@ private:
 
 	void OffsetRayOrigin(Ray& ray,const HitPayload& payload);
 
+	HitPayload TraceRayBruteForce(const Ray& ray);
 	HitPayload TraceRay(const Ray& ray);
 	HitPayload ClosestHit(const Ray& ray, float hitDistance,int objectIndex);
 	HitPayload Miss(const Ray& ray);
@@ -154,6 +150,8 @@ private:
 	Environment m_Environment;
 
 	std::vector<Light> m_Lights;
+
+	BVH m_BVH;
 };
 
 template<typename T>

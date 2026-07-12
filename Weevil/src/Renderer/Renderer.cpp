@@ -1,6 +1,7 @@
 #include "Renderer.h"
 #include "Walnut/Random.h"
 #include <execution>
+#include "HitPayload.h"
 
 Renderer::Renderer()
 {
@@ -64,7 +65,7 @@ glm::vec4 Renderer::Integrate(uint32_t x, uint32_t y)
 	const int bounces = m_Settings.MaxBounces;//now instead of using a fixed bounce amt to terminate we will implement russian roulette to terminate the ray if it has a low probability of contributing to the final image
 	for (int i = 0; i < bounces; i++)
 	{
-		Renderer::HitPayload payload = TraceRay(pathState.CurrentRay);
+		HitPayload payload = TraceRay(pathState.CurrentRay);
 		if (payload.HitDistance < 0.0f)
 		{
 			AddSkyLight(pathState.AccumulatedRadiance, pathState.PathThroughput, pathState.CurrentRay);
@@ -115,6 +116,11 @@ void Renderer::Render(const Scene& scene, const Camera& camera)
 {
 	m_ActiveScene = &scene;
 	m_ActiveCamera = &camera;
+
+	if (m_FrameIndex == 1)
+	{
+		m_BVH.Build(scene);
+	}
 
 	BuildLightList();
 

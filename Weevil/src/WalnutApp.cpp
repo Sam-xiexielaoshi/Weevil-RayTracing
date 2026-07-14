@@ -1,5 +1,6 @@
 #include "Walnut/Application.h"
 #include "Walnut/EntryPoint.h"
+#include "Editor/EditorUI.h"
 
 #include "Walnut/Image.h"
 #include "Walnut/Timer.h"
@@ -16,6 +17,7 @@ public:
 
 	ExampleLayer() : m_Camera(60.0f, 0.1f, 100.0f) 
 	{
+
 		Material& pinkSphere = m_Scene.Materials.emplace_back();
 		pinkSphere.Albedo = { 1.0f, 0.0f, 1.0f };
 		pinkSphere.Roughness = 0.0f;
@@ -53,6 +55,15 @@ public:
 			sphere.MaterialIndex = 1;
 			m_Scene.Spheres.push_back(sphere);
 		}
+
+		m_EditorContext.Renderer = &m_Renderer;
+		m_EditorContext.Camera = &m_Camera;
+		m_EditorContext.Scene = &m_Scene;
+
+		m_EditorContext.LastRenderTime = &m_LastRenderTime;
+
+		m_EditorContext.ViewportWidth = &m_ViewportWidth;
+		m_EditorContext.ViewportHeight = &m_ViewportHeight;
 	}
 
 	virtual void OnUpdate(float ts) override
@@ -62,6 +73,7 @@ public:
 	}
 	virtual void OnUIRender() override
 	{
+		m_Editor.Draw(m_EditorContext);
 		ImGui::Begin("Settings");
 		ImGui::Text("Last render time: %.3fms", m_LastRenderTime);
 		if (ImGui::Button("Render"))
@@ -396,6 +408,8 @@ private:
 	Renderer m_Renderer;
 	Camera m_Camera;
 	Scene m_Scene;
+	EditorUI m_Editor;
+	EditorContext m_EditorContext;
 	uint32_t m_ViewportWidth = 0, m_ViewportHeight = 0;
 
 	float m_LastRenderTime = 0.0f;

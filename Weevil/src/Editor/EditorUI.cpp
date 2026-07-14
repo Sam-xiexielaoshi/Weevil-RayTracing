@@ -2,5 +2,5 @@
 
 void EditorUI::Draw(EditorContext& context)
 {
-
+	m_RendererPanel.Draw(context);
 }

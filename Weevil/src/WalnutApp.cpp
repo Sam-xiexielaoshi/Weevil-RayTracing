@@ -77,41 +77,6 @@ public:
 
 		ImGui::Begin("Scene");
 
-		//spheres tree node
-		if (ImGui::TreeNodeEx("Spheres", ImGuiTreeNodeFlags_DefaultOpen))
-		{
-			for (size_t i = 0; i < m_Scene.Spheres.size(); i++)
-			{
-				ImGui::PushID(i);
-				std::string label = "Sphere " + std::to_string(i);
-				if (ImGui::TreeNode(label.c_str()))
-				{
-					Sphere& sphere = m_Scene.Spheres[i];
-					bool sphereChanged = false;
-					sphereChanged |= ImGui::DragFloat3(
-						"Position",
-						glm::value_ptr(sphere.Position),
-						0.1f);
-					sphereChanged |= ImGui::DragFloat(
-						"Radius",
-						&sphere.Radius,
-						0.1f);
-					sphereChanged |= ImGui::DragInt(
-						"Material",
-						&sphere.MaterialIndex,
-						1,
-						0,
-						(int)m_Scene.Materials.size() - 1);
-					if (sphereChanged)
-						m_Renderer.ResetFrameIndex();
-					ImGui::TreePop();
-				}
-				ImGui::PopID();
-			}
-			ImGui::TreePop();
-		}
-		ImGui::Separator();
-
 		//materials tree node
 		if (ImGui::TreeNodeEx("Materials", ImGuiTreeNodeFlags_DefaultOpen))
 		{

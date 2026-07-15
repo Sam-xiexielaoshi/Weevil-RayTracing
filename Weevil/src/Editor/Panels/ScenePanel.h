@@ -7,4 +7,6 @@ public:
 	void Draw(EditorContext& context);
 private:
 	void DrawSpheres(EditorContext& context);
+	void DrawMaterials(EditorContext& context);
+	void DrawEnvironment(EditorContext& context);
 };

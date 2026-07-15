@@ -202,3 +202,8 @@ void ScenePanel::DrawEnvironment(EditorContext& context)
 	}
 }
 
+bool ScenePanel::DrawSelectableSphere(const char* label, bool selected)
+{
+	return ImGui::Selectable(label, selected);
+}
+

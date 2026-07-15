@@ -9,4 +9,5 @@ private:
 	void DrawSpheres(EditorContext& context);
 	void DrawMaterials(EditorContext& context);
 	void DrawEnvironment(EditorContext& context);
+	bool DrawSelectableSphere(const char* label, bool selected);
 };

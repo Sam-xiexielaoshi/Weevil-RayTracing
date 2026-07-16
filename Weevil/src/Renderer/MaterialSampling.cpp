@@ -1,4 +1,5 @@
 #include "Renderer.h"
+#include "BRDF/BRDF.h"
 #include "Walnut/Random.h"
 #include "BRDF/Fresnel.h"
 #include <execution>

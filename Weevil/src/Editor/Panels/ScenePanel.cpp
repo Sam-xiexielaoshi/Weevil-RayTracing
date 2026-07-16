@@ -1,4 +1,5 @@
 #include "ScenePanel.h"
+#include "../Commands/EditorCommands.h"
 #include <imgui.h>
 #include <glm/gtc/type_ptr.hpp>
 
@@ -18,11 +19,28 @@ void ScenePanel::DrawSpheres(EditorContext& context)
 	//spheres tree node
 	if (ImGui::TreeNodeEx("Spheres", ImGuiTreeNodeFlags_DefaultOpen))
 	{
+		if (ImGui::Button("+ Add Sphere"))
+		{
+			EditorCommands::CreateSphere(context);
+		}
+		ImGui::Separator();
 		for (size_t i = 0; i < scene.Spheres.size(); i++)
 		{
 			ImGui::PushID(i);
 			std::string label = "Sphere " + std::to_string(i);
 			bool open = ImGui::TreeNode(label.c_str());
+			if (ImGui::BeginPopupContextItem())
+			{
+				if (ImGui::MenuItem("Delete"))
+				{
+					EditorCommands::DeleteSphere(context, static_cast<int>(i));
+					ImGui::EndPopup();
+					if (open) ImGui::TreePop();
+					ImGui::PopID();
+					break;
+				}
+				ImGui::EndPopup();
+			}
 			if (ImGui::IsItemClicked())
 			{
 				context.SelectedType = SelectionType::Sphere;

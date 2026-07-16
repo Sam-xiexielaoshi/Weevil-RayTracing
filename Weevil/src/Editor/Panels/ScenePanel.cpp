@@ -19,11 +19,6 @@ void ScenePanel::DrawSpheres(EditorContext& context)
 	//spheres tree node
 	if (ImGui::TreeNodeEx("Spheres", ImGuiTreeNodeFlags_DefaultOpen))
 	{
-		if (ImGui::Button("+ Add Sphere"))
-		{
-			EditorCommands::CreateSphere(context);
-		}
-		ImGui::Separator();
 		for (size_t i = 0; i < scene.Spheres.size(); i++)
 		{
 			ImGui::PushID(i);

@@ -1,5 +1,6 @@
 #include "Renderer.h"
 #include "Walnut/Random.h"
+#include "BRDF/Fresnel.h"
 #include <execution>
 #include <glm/glm.hpp>
 #include <glm/gtc/constants.hpp>
@@ -23,7 +24,7 @@ glm::vec3 Renderer::SampleMetal(const Ray& ray, const HitPayload& payload, const
 
 	float cosTheta = glm::max(glm::dot(-ray.Direction, payload.WorldNormal), 0.0f);
 
-	glm::vec3 fresnel = FresnelSchlick(cosTheta, F0);
+	glm::vec3 fresnel = BRDF::FresnelSchlick(cosTheta, F0);
 	throughput *= fresnel * material.Albedo;
 
 	glm::vec3 reflected = glm::reflect(ray.Direction, payload.WorldNormal);
@@ -50,7 +51,7 @@ glm::vec3 Renderer::SampleDielectric(Ray& ray, const HitPayload& payload, const 
 
 	glm::vec3 F0 = glm::vec3(std::pow((1.0f - material.RefractionIndex) / (1.0f + material.RefractionIndex), 2.0f));
 
-	float reflectProbability = FresnelSchlick(cosTheta, F0).r;
+	float reflectProbability = BRDF::FresnelSchlick(cosTheta, F0).r;
 	// Update medium state 
 	if (frontFace)
 	{
@@ -67,11 +68,6 @@ glm::vec3 Renderer::SampleDielectric(Ray& ray, const HitPayload& payload, const 
 		return glm::normalize(glm::reflect(ray.Direction, normal));
 	}
 	return glm::normalize(glm::refract(ray.Direction, normal, eta));
-}
-
-glm::vec3 Renderer::FresnelSchlick(float cosTheta, const glm::vec3& F0)
-{
-	return F0 + (glm::vec3(1.0f) - F0) * std::pow(1.0f - cosTheta, 5.0f);
 }
 
 bool Renderer::RussianRoulette(glm::vec3& throughput, int bounce)

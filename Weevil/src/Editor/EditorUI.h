@@ -1,6 +1,7 @@
 #pragma once
 #include "EditorContext.h"
 
+#include "Core/PanelManager.h"
 
 #include "Panels/RendererPanel.h"
 #include "Panels/ScenePanel.h"
@@ -11,12 +12,8 @@
 class EditorUI
 {
 public:
+	EditorUI();
 	void Draw(EditorContext& context);
 private:
-	MenuBarPanel m_MenuBarPanel;
-
-	RendererPanel m_RendererPanel;
-	ScenePanel m_ScenePanel;
-	ViewportPanel m_ViewportPanel;
-	InspectorPanel m_InspectorPanel;
+	PanelManager m_PanelManager;
 };

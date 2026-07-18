@@ -17,4 +17,6 @@ namespace BRDF
 
     float GeometrySchlickGGX(float NdotV, float roughness);
 	float GeometrySmith(const glm::vec3& N, const glm::vec3& V, const glm::vec3& L, float roughness);
+
+    glm::vec3 ImportanceSampleGGX(const glm::vec2& Xi, const glm::vec3& N, float roughness);
 }

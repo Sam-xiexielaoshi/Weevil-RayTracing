@@ -2,11 +2,12 @@
 #include "Walnut/Image.h"
 
 #include "BVH/BVH.h"
+#include "BSDF/BSDFSample.h"
 #include "../Core/Camera.h"
 #include "../Scene/Ray.h"
 #include "../Scene/Scene.h"
 #include "../Scene/Environment.h"
-#include "HitPayload.h"
+#include "Integrator/HitPayload.h"
 
 #include <memory>
 #include <glm/glm.hpp>
@@ -104,9 +105,9 @@ private:
 	glm::vec3 ACESToneMap(const glm::vec3& color);
 	glm::vec3 HableToneMap(const glm::vec3& color);
 
-	glm::vec3 SampleDiffuse(const HitPayload& payload, const Material& material, glm::vec3& throughput);
-	glm::vec3 SampleMetal(const Ray& ray, const HitPayload& payload, const Material& material, glm::vec3& throughput);
-	glm::vec3 SampleDielectric(Ray& ray, const HitPayload& payload, const Material& material, glm::vec3& throughput);
+	BSDFSample SampleDiffuse(const HitPayload& payload, const Material& material);
+	BSDFSample SampleMetal(const Ray& ray, const HitPayload& payload, const Material& material);
+	BSDFSample SampleDielectric(Ray& ray, const HitPayload& payload, const Material& material);
 
 	bool RussianRoulette(glm::vec3& throughput, int bounce);
 

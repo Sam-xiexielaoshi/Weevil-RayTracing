@@ -1,6 +1,6 @@
-#include "Renderer.h"
+#include "../Renderer.h"
 #include "HitPayload.h"
-#include "Geometry/Geometry.h"
+#include "../Geometry/Geometry.h"
 
 HitPayload Renderer::TraceRay(const Ray& ray)
 {

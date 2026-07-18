@@ -1,8 +1,8 @@
 #pragma once
-#include "AABB.h"
+#include "../Geometry/AABB.h"
 #include <vector>
 #include <cstdint>
-#include "../HitPayload.h"
+#include "../Integrator/HitPayload.h"
 
 struct Ray;
 class Scene;

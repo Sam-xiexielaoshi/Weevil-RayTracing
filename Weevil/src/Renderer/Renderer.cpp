@@ -1,7 +1,6 @@
 #include "Renderer.h"
 #include "Walnut/Random.h"
 #include <execution>
-#include "HitPayload.h"
 
 Renderer::Renderer()
 {
@@ -86,24 +85,29 @@ glm::vec4 Renderer::Integrate(uint32_t x, uint32_t y)
 		{
 			pathState.AccumulatedRadiance += pathState.PathThroughput * EstimateDirectLighting(payload, material);
 		}
+
+		BSDFSample sample;
 		switch (material.Type)
 		{
 			case MaterialType::Diffuse:
 			{
-				pathState.CurrentRay.Direction = SampleDiffuse(payload, material, pathState.PathThroughput);
+				sample = SampleDiffuse(payload, material);
 				break;
 			}
 			case MaterialType::Metal:
 			{
-				pathState.CurrentRay.Direction = SampleMetal(pathState.CurrentRay,	payload, material, pathState.PathThroughput);
+				sample = SampleMetal(pathState.CurrentRay, payload, material);
 				break;
 			}
+
 			case MaterialType::Dielectric:
 			{
-				pathState.CurrentRay.Direction = SampleDielectric(pathState.CurrentRay, payload,material, pathState.PathThroughput);
+				sample = SampleDielectric(pathState.CurrentRay,	payload, material);
 				break;
 			}
 		}
+		pathState.PathThroughput *= sample.Weight;
+		pathState.CurrentRay.Direction = sample.Direction;
 		OffsetRayOrigin(pathState.CurrentRay, payload);
 		if (!RussianRoulette(pathState.PathThroughput, i))
 			break;

@@ -52,7 +52,7 @@ namespace BRDF
 		sample.PDF = PDFGGX(N, V, sample.HalfVector, roughness);
         return sample;
     }
-    glm::vec3 EvaluateCookTorrance(const glm::vec3& N, const glm::vec3& V, glm::vec3& L, float roughness, const glm::vec3& F0)
+    glm::vec3 EvaluateCookTorrance(const glm::vec3& N, const glm::vec3& V, const glm::vec3& L, float roughness, const glm::vec3& F0)
     {
 		glm::vec3 H = glm::normalize(V + L);
         float D = DistributionGGX(N, H, roughness);

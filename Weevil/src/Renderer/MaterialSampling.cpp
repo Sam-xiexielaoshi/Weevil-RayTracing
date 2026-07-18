@@ -28,11 +28,14 @@ glm::vec3 Renderer::SampleMetal(const Ray& ray, const HitPayload& payload, const
 	glm::vec3 fresnel = BRDF::FresnelSchlick(cosTheta, F0);
 	throughput *= fresnel * material.Albedo;
 
-	glm::vec3 reflected = glm::reflect(ray.Direction, payload.WorldNormal);
+	glm::vec2 Xi(Walnut::Random::Float(), Walnut::Random::Float());
+	glm::vec3 V = -ray.Direction;
+	glm::vec3 H = BRDF::ImportanceSampleGGX(Xi, payload.WorldNormal, material.Roughness);
 
-	reflected += material.Roughness * Walnut::Random::InUnitSphere();
+	glm::vec3 reflected = glm::reflect(-V, H);
+
 	reflected = glm::normalize(reflected);
-	// Prevent the ray from scattering below the surface
+
 	if (glm::dot(reflected, payload.WorldNormal) <= 0.0f)
 	{
 		reflected = glm::reflect(ray.Direction, payload.WorldNormal);

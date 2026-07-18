@@ -30,9 +30,9 @@ glm::vec3 Renderer::SampleMetal(const Ray& ray, const HitPayload& payload, const
 
 	glm::vec2 Xi(Walnut::Random::Float(), Walnut::Random::Float());
 	glm::vec3 V = -ray.Direction;
-	glm::vec3 H = BRDF::ImportanceSampleGGX(Xi, payload.WorldNormal, material.Roughness);
+	BRDF::GGXSample sample = BRDF::ImportanceSampleGGX(Xi, payload.WorldNormal, V, material.Roughness);
 
-	glm::vec3 reflected = glm::reflect(-V, H);
+	glm::vec3 reflected = sample.Direction;
 
 	reflected = glm::normalize(reflected);
 

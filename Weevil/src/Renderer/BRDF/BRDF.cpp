@@ -31,7 +31,7 @@ namespace BRDF
 		float ggx2 = GeometrySchlickGGX(NdotL, roughness);
         return ggx1 * ggx2;
     }
-    glm::vec3 ImportanceSampleGGX(const glm::vec2& Xi, const glm::vec3& N, float roughness)
+    GGXSample ImportanceSampleGGX(const glm::vec2& Xi, const glm::vec3& N, const glm::vec3& V, float roughness)
     {
 		float a = roughness * roughness;
 		float phi = 2.0f * glm::pi<float>() * Xi.x;
@@ -45,7 +45,12 @@ namespace BRDF
 		glm::vec3 tangent = glm::normalize(glm::cross(up, N));
 		glm::vec3 bitangent = glm::cross(N, tangent);
 		glm::vec3 sampleVec = tangent * H.x + bitangent * H.y + N * H.z;
-        return glm::normalize(sampleVec);
+        GGXSample sample;
+		sample.HalfVector = glm::normalize(sampleVec);
+		sample.Direction = glm::reflect(-V, sample.HalfVector);
+		sample.Direction = glm::normalize(sample.Direction);
+		sample.PDF = PDFGGX(N, V, sample.HalfVector, roughness);
+        return sample;
     }
     glm::vec3 EvaluateCookTorrance(const glm::vec3& N, const glm::vec3& V, glm::vec3& L, float roughness, const glm::vec3& F0)
     {

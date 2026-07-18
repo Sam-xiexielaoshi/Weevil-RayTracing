@@ -1,8 +1,8 @@
 #include "../Renderer.h"
 #include "../BRDF/BRDF.h"
+#include "../BRDF/Fresnel.h"
 #include "BSDFSample.h"
 #include "Walnut/Random.h"
-#include "../BRDF/Fresnel.h"
 #include <execution>
 #include <glm/glm.hpp>
 #include <glm/gtc/constants.hpp>
@@ -25,6 +25,9 @@ BSDFSample Renderer::SampleDiffuse(const HitPayload& payload, const Material& ma
 
 BSDFSample Renderer::SampleMetal(const Ray& ray, const HitPayload& payload, const Material& material)
 {
+    constexpr float kMirrorRoughnessThreshold = 0.001f;
+    if (material.Roughness < kMirrorRoughnessThreshold)
+        return SampleMirror(ray, payload, material);
 	BSDFSample sample;
 	glm::vec3 F0(0.04f);
 	F0 = glm::mix(F0, material.Albedo, material.Metallic);
@@ -38,13 +41,19 @@ BSDFSample Renderer::SampleMetal(const Ray& ray, const HitPayload& payload, cons
 	{
 		reflected =	glm::normalize(glm::reflect(ray.Direction, payload.WorldNormal));
 	}
-	sample.Direction = reflected;
-	//save sample half vcec
-	sample.HalfVector = ggx.HalfVector;
-	// Temporary (Cook-Torrance comes next)
-	sample.Weight = fresnel * material.Albedo;
-	sample.PDF = ggx.PDF;
-	sample.IsDelta = false;
+    sample.Direction = reflected;
+    // Store the sampled half-vector
+    sample.HalfVector = ggx.HalfVector;
+    // Evaluate Cook-Torrance BRDF
+    glm::vec3 brdf = BRDF::EvaluateCookTorrance(payload.WorldNormal, V, reflected, sample.HalfVector, material.Roughness, F0);
+    // Monte Carlo estimator
+    float NdotL = glm::max(glm::dot(payload.WorldNormal, reflected), 0.0f);
+    if (ggx.PDF > 1e-6f && NdotL > 0.0f)
+        sample.Weight = brdf * (NdotL / ggx.PDF);
+    else
+        sample.Weight = glm::vec3(0.0f);
+    sample.PDF = ggx.PDF;
+    sample.IsDelta = false;
 	return sample;
 }
 
@@ -80,6 +89,23 @@ BSDFSample Renderer::SampleDielectric(Ray& ray, const HitPayload& payload, const
     }
     // Temporary placeholder
     sample.Weight = glm::vec3(1.0f);
+    sample.PDF = 1.0f;
+    sample.IsDelta = true;
+    return sample;
+}
+
+BSDFSample Renderer::SampleMirror(const Ray& ray, const HitPayload& payload, const Material& material)
+{
+    BSDFSample sample;
+    glm::vec3 reflected = glm::normalize(glm::reflect(ray.Direction, payload.WorldNormal));
+    glm::vec3 V = -ray.Direction;
+    glm::vec3 F0(0.04f);
+    F0 = glm::mix(F0, material.Albedo, material.Metallic);
+    float cosTheta = glm::max(glm::dot(V, payload.WorldNormal), 0.0f);
+    glm::vec3 fresnel = BRDF::FresnelSchlick(cosTheta, F0);
+    sample.Direction = reflected;
+    sample.Weight = fresnel;
+    // Delta distribution
     sample.PDF = 1.0f;
     sample.IsDelta = true;
     return sample;

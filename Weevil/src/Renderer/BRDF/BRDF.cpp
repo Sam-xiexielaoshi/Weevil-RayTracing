@@ -6,7 +6,10 @@ namespace BRDF
 {
     float DistributionGGX(const glm::vec3& N, const glm::vec3& H, float roughness)
     {
-        float a = roughness * roughness;
+        const float MIN_ROUGHNESS = 0.001f;
+
+        float a = glm::max(roughness, MIN_ROUGHNESS);
+        a *= a;
         float a2 = a * a;
 
         float NdotH = glm::max(glm::dot(N, H), 0.0f);
@@ -52,15 +55,14 @@ namespace BRDF
 		sample.PDF = PDFGGX(N, V, sample.HalfVector, roughness);
         return sample;
     }
-    glm::vec3 EvaluateCookTorrance(const glm::vec3& N, const glm::vec3& V, const glm::vec3& L, float roughness, const glm::vec3& F0)
+    glm::vec3 EvaluateCookTorrance(const glm::vec3& N, const glm::vec3& V, const glm::vec3& L, const glm::vec3& H, float roughness, const glm::vec3& F0)
     {
-		glm::vec3 H = glm::normalize(V + L);
         float D = DistributionGGX(N, H, roughness);
-		float G = GeometrySmith(N, V, L, roughness);
-		glm::vec3 F = FresnelSchlick(glm::max(glm::dot(H, V), 0.0f), F0);
-		float NdotV = glm::max(glm::dot(N, V), 0.0f);
-		float NdotL = glm::max(glm::dot(N, L), 0.0f);
-		float denominator = 4.0f * NdotV * NdotL + 0.000001f;
+        float G = GeometrySmith(N, V, L, roughness);
+        glm::vec3 F = FresnelSchlick(glm::max(glm::dot(H, V), 0.0f), F0);
+        float NdotV = glm::max(glm::dot(N, V), 0.0f);
+        float NdotL = glm::max(glm::dot(N, L), 0.0f);
+        float denominator = 4.0f * NdotV * NdotL + 0.000001f;
         return (D * G * F) / denominator;
     }
     float PDFGGX(const glm::vec3& N, const glm::vec3& V, const glm::vec3& H, float roughness)

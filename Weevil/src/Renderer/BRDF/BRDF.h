@@ -14,4 +14,7 @@ namespace BRDF
 
 	glm::vec3 FresnelSchlick(float cosTheta, const glm::vec3& F0);
 	float DistributionGGX(const glm::vec3& N, const glm::vec3& H, float roughness);
+
+    float GeometrySchlickGGX(float NdotV, float roughness);
+	float GeometrySmith(const glm::vec3& N, const glm::vec3& V, const glm::vec3& L, float roughness);
 }

@@ -47,4 +47,15 @@ namespace BRDF
 		glm::vec3 sampleVec = tangent * H.x + bitangent * H.y + N * H.z;
         return glm::normalize(sampleVec);
     }
+    glm::vec3 EvaluateCookTorrance(const glm::vec3& N, const glm::vec3& V, glm::vec3& L, float roughness, const glm::vec3& F0)
+    {
+		glm::vec3 H = glm::normalize(V + L);
+        float D = DistributionGGX(N, H, roughness);
+		float G = GeometrySmith(N, V, L, roughness);
+		glm::vec3 F = FresnelSchlick(glm::max(glm::dot(H, V), 0.0f), F0);
+		float NdotV = glm::max(glm::dot(N, V), 0.0f);
+		float NdotL = glm::max(glm::dot(N, L), 0.0f);
+		float denominator = 4.0f * NdotV * NdotL + 0.000001f;
+        return (D * G * F) / denominator;
+    }
 }

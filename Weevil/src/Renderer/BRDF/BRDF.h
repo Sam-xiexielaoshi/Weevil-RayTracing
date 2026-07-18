@@ -19,4 +19,6 @@ namespace BRDF
 	float GeometrySmith(const glm::vec3& N, const glm::vec3& V, const glm::vec3& L, float roughness);
 
     glm::vec3 ImportanceSampleGGX(const glm::vec2& Xi, const glm::vec3& N, float roughness);
+
+    glm::vec3 EvaluateCookTorrance(const glm::vec3& N, const glm::vec3& V, glm::vec3& L, float roughness, const glm::vec3& F0);
 }

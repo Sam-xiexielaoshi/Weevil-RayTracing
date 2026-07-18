@@ -8,18 +8,20 @@
 #include <glm/gtc/constants.hpp>
 #include <cmath>
 
-BSDFSample Renderer::SampleDiffuse(const HitPayload& payload, const Material& material)
+BSDFSample Renderer::SampleDiffuse(const Ray& ray,const HitPayload& payload, const Material& material)
 {
 	BSDFSample sample;
 	glm::vec3 direction = payload.WorldNormal + Walnut::Random::InUnitSphere();
 	if (glm::dot(direction, payload.WorldNormal) < 0.0f)
 		direction = -direction;
 	sample.Direction = glm::normalize(direction);
-	// Temporary (will become Lambert BRDF later)
-	sample.Weight = material.Albedo;
-	sample.PDF = 1.0f;
-	sample.IsDelta = false;
-
+    glm::vec3 V = -ray.Direction;
+    float cosTheta = glm::max(glm::dot(V, payload.WorldNormal), 0.0f);
+    glm::vec3 F0(0.04f);
+    F0 = glm::mix(F0, material.Albedo, material.Metallic);
+    glm::vec3 fresnel = BRDF::FresnelSchlick(cosTheta, F0);
+    glm::vec3 kD = BRDF::ComputeDiffuseEnergy(fresnel, material.Metallic);
+    sample.Weight = material.Albedo * kD;
 	return sample;
 }
 

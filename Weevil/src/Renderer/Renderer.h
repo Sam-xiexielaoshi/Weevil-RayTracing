@@ -105,7 +105,7 @@ private:
 	glm::vec3 ACESToneMap(const glm::vec3& color);
 	glm::vec3 HableToneMap(const glm::vec3& color);
 
-	BSDFSample SampleDiffuse(const HitPayload& payload, const Material& material);
+	BSDFSample SampleDiffuse(const Ray& ray, const HitPayload& payload, const Material& material);
 	BSDFSample SampleMetal(const Ray& ray, const HitPayload& payload, const Material& material);
 	BSDFSample SampleDielectric(Ray& ray, const HitPayload& payload, const Material& material);
 	BSDFSample SampleMirror(const Ray& ray, const HitPayload& payload, const Material& material);

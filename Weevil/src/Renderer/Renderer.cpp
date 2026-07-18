@@ -91,7 +91,7 @@ glm::vec4 Renderer::Integrate(uint32_t x, uint32_t y)
 		{
 			case MaterialType::Diffuse:
 			{
-				sample = SampleDiffuse(payload, material);
+				sample = SampleDiffuse(pathState.CurrentRay, payload, material);
 				break;
 			}
 			case MaterialType::Metal:

@@ -11,7 +11,10 @@ namespace BRDF
         float PDF = 0.0f;
     };
 
-	glm::vec3 FresnelSchlick(float cosTheta, const glm::vec3& F0);
+    glm::vec3 FresnelSchlick(float cosTheta, const glm::vec3& F0);
+
+    glm::vec3 ComputeDiffuseEnergy(const glm::vec3& fresnel, float metallic);
+
 	float DistributionGGX(const glm::vec3& N, const glm::vec3& H, float roughness);
 
     float GeometrySchlickGGX(float NdotV, float roughness);

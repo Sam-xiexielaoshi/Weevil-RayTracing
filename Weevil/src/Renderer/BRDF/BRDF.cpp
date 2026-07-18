@@ -58,4 +58,13 @@ namespace BRDF
 		float denominator = 4.0f * NdotV * NdotL + 0.000001f;
         return (D * G * F) / denominator;
     }
+    float PDFGGX(const glm::vec3& N, const glm::vec3& V, const glm::vec3& H, float roughness)
+    {
+		float D = DistributionGGX(N, H, roughness);
+		float NdotH = glm::max(glm::dot(N, H), 0.0f);
+		float VdotH = glm::max(glm::dot(V, H), 0.0f);
+        if (VdotH < 1e-6f)
+            return 0.0f;
+		return (D * NdotH) / (4.0f * VdotH);
+    }
 }

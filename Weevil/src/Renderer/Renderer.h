@@ -105,12 +105,12 @@ private:
 	glm::vec3 ACESToneMap(const glm::vec3& color);
 	glm::vec3 HableToneMap(const glm::vec3& color);
 
+	BSDFSample SampleBSDF(Ray& ray, const HitPayload& payload, const Material& material);
+
 	BSDFSample SampleDiffuse(const Ray& ray, const HitPayload& payload, const Material& material);
 	BSDFSample SampleMetal(const Ray& ray, const HitPayload& payload, const Material& material);
 	BSDFSample SampleDielectric(Ray& ray, const HitPayload& payload, const Material& material);
 	BSDFSample SampleMirror(const Ray& ray, const HitPayload& payload, const Material& material);
-
-	BSDFSample SampleBSDF(Ray& ray, const HitPayload& payload, const Material& material);
 
 	bool RussianRoulette(glm::vec3& throughput, int bounce);
 

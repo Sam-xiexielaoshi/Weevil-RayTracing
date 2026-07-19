@@ -86,26 +86,8 @@ glm::vec4 Renderer::Integrate(uint32_t x, uint32_t y)
 			pathState.AccumulatedRadiance += pathState.PathThroughput * EstimateDirectLighting(payload, material);
 		}
 
-		BSDFSample sample;
-		switch (material.Type)
-		{
-			case MaterialType::Diffuse:
-			{
-				sample = SampleDiffuse(pathState.CurrentRay, payload, material);
-				break;
-			}
-			case MaterialType::Metal:
-			{
-				sample = SampleMetal(pathState.CurrentRay, payload, material);
-				break;
-			}
+		BSDFSample sample = SampleBSDF(pathState.CurrentRay, payload, material);
 
-			case MaterialType::Dielectric:
-			{
-				sample = SampleDielectric(pathState.CurrentRay,	payload, material);
-				break;
-			}
-		}
 		pathState.PathThroughput *= sample.Weight;
 		pathState.CurrentRay.Direction = sample.Direction;
 		OffsetRayOrigin(pathState.CurrentRay, payload);

@@ -110,6 +110,8 @@ private:
 	BSDFSample SampleDielectric(Ray& ray, const HitPayload& payload, const Material& material);
 	BSDFSample SampleMirror(const Ray& ray, const HitPayload& payload, const Material& material);
 
+	BSDFSample SampleBSDF(Ray& ray, const HitPayload& payload, const Material& material);
+
 	bool RussianRoulette(glm::vec3& throughput, int bounce);
 
 	void AddSkyLight(glm::vec3& light, const glm::vec3& throughput, const Ray& ray);

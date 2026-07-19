@@ -74,4 +74,27 @@ namespace BRDF
             return 0.0f;
 		return (D * NdotH) / (4.0f * VdotH);
     }
+    glm::vec3 CosineSampleHemisphere(const glm::vec2& Xi)
+    {
+        float r = glm::sqrt(Xi.x);
+		float theta = 2.0f * glm::pi<float>() * Xi.y;
+		float x = r * glm::cos(theta);
+		float y = r * glm::sin(theta);
+		float z = glm::sqrt(glm::max(0.0f, 1.0f - Xi.x));
+        return glm::vec3(x,y,z);
+    }
+
+    float CosineHemispherePDF(float NdotL)
+    {
+        return NdotL / glm::pi<float>();
+    }
+
+    glm::vec3 ToWorld(const glm::vec3& local, const glm::vec3& normal)
+    {
+        glm::vec3 up = glm::abs(normal.z) < 0.999f ? glm::vec3(0, 0, 1) : glm::vec3(1, 0, 0);
+		glm::vec3 tangent = glm::normalize(glm::cross(up, normal));
+		glm::vec3 bitangent = glm::cross(normal, tangent);
+		return glm::normalize(local.x * tangent + local.y * bitangent + local.z * normal);
+    }
+
 }

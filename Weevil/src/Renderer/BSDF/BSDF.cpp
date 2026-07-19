@@ -11,9 +11,11 @@
 BSDFSample Renderer::SampleDiffuse(const Ray& ray,const HitPayload& payload, const Material& material)
 {
 	BSDFSample sample;
-	glm::vec3 direction = payload.WorldNormal + Walnut::Random::InUnitSphere();
-	if (glm::dot(direction, payload.WorldNormal) < 0.0f)
-		direction = -direction;
+	
+	glm::vec2 Xi = glm::vec2(Walnut::Random::Float(), Walnut::Random::Float());
+    glm::vec3 local = BRDF::CosineSampleHemisphere(Xi);
+	glm::vec3 direction = BRDF::ToWorld(local, payload.WorldNormal);
+
 	sample.Direction = glm::normalize(direction);
     glm::vec3 V = -ray.Direction;
     float cosTheta = glm::max(glm::dot(V, payload.WorldNormal), 0.0f);
@@ -21,7 +23,15 @@ BSDFSample Renderer::SampleDiffuse(const Ray& ray,const HitPayload& payload, con
     F0 = glm::mix(F0, material.Albedo, material.Metallic);
     glm::vec3 fresnel = BRDF::FresnelSchlick(cosTheta, F0);
     glm::vec3 kD = BRDF::ComputeDiffuseEnergy(fresnel, material.Metallic);
-    sample.Weight = material.Albedo * kD;
+    
+    float NdotL = glm::max(glm::dot(payload.WorldNormal, sample.Direction), 0.0f);
+	glm::vec3 brdf = (material.Albedo / glm::pi<float>()) * kD;
+	sample.PDF = BRDF::CosineHemispherePDF(NdotL);
+    if(sample.PDF>1e-6f)
+        sample.Weight = brdf * (NdotL / sample.PDF);
+    else
+		sample.Weight = glm::vec3(0.0f);
+
 	return sample;
 }
 

@@ -13,7 +13,21 @@ BSDFSample Renderer::SampleBSDF(Ray& ray, const HitPayload& payload, const Mater
     switch (material.Type)
     {
     case MaterialType::Diffuse:
-        return SampleDiffuse(ray, payload, material);
+    {
+		constexpr float kDielectricSpecularWeight = 0.08f;
+        float diffuseProbability;
+		float specularProbability;
+        BRDF::ComputeLobeProbabilities(kDielectricSpecularWeight, diffuseProbability, specularProbability);
+        if (Walnut::Random::Float() < diffuseProbability)
+        {
+            BSDFSample sample = SampleDiffuse(ray, payload, material);
+			sample.SelectionPDF = diffuseProbability;
+            return sample;
+        }
+		BSDFSample sample = SampleSpecularDielectric(ray, payload, material);
+		sample.SelectionPDF = specularProbability;
+        return sample;
+    }
 
     case MaterialType::Metal:
         return SampleMetal(ray, payload, material);
@@ -53,38 +67,55 @@ BSDFSample Renderer::SampleDiffuse(const Ray& ray,const HitPayload& payload, con
 	return sample;
 }
 
+BSDFSample Renderer::SampleGGX(const Ray& ray, const HitPayload& payload, float roughness, const glm::vec3& F0)
+{
+    BSDFSample sample;
+	glm::vec3 N = payload.WorldNormal;
+    glm::vec3 V = -ray.Direction;
+	glm::vec2 Xi = glm::vec2(Walnut::Random::Float(), Walnut::Random::Float());
+	BRDF::GGXSample ggx = BRDF::ImportanceSampleGGX(Xi, N, V, roughness);
+    glm::vec3 H = ggx.HalfVector;
+	glm::vec3 L = glm::normalize(glm::reflect(-V, H));
+    if (glm::dot(N, L) <= 0.0f)
+    {
+        L = glm::normalize(glm::reflect(ray.Direction, N));
+        H = glm::normalize(V + L);
+    }
+	float pdf = BRDF::PDFGGX(N, V, H, roughness);
+	glm::vec3 brdf = BRDF::EvaluateCookTorrance(N, V, L, H, roughness, F0);
+	float NdotL = glm::max(glm::dot(N, L), 0.0f);
+    sample.Direction = L;
+    sample.HalfVector = H;
+	sample.PDF = pdf;
+	sample.IsDelta = false;
+    if (pdf > 1e-6f)
+    {
+        sample.Weight = brdf * (NdotL / pdf);
+    }
+    else
+    {
+        sample.Weight = glm::vec3(0.0f);
+    }
+    return sample;
+}
+
 BSDFSample Renderer::SampleMetal(const Ray& ray, const HitPayload& payload, const Material& material)
 {
-    constexpr float kMirrorRoughnessThreshold = 0.001f;
-    if (material.Roughness < kMirrorRoughnessThreshold)
+	constexpr float kMirrorThreshold = 0.001f;
+    if (material.Roughness < kMirrorThreshold)
         return SampleMirror(ray, payload, material);
-	BSDFSample sample;
-	glm::vec3 F0(0.04f);
-	F0 = glm::mix(F0, material.Albedo, material.Metallic);
-	float cosTheta = glm::max(glm::dot(-ray.Direction, payload.WorldNormal), 0.0f);
-	glm::vec3 fresnel = BRDF::FresnelSchlick(cosTheta, F0);
-	glm::vec2 Xi(Walnut::Random::Float(), Walnut::Random::Float());
-	glm::vec3 V = -ray.Direction;
-	BRDF::GGXSample ggx = BRDF::ImportanceSampleGGX(Xi,	payload.WorldNormal, V,	material.Roughness);
-	glm::vec3 reflected = glm::normalize(ggx.Direction);
-	if (glm::dot(reflected, payload.WorldNormal) <= 0.0f)
-	{
-		reflected =	glm::normalize(glm::reflect(ray.Direction, payload.WorldNormal));
-	}
-    sample.Direction = reflected;
-    // Store the sampled half-vector
-    sample.HalfVector = ggx.HalfVector;
-    // Evaluate Cook-Torrance BRDF
-    glm::vec3 brdf = BRDF::EvaluateCookTorrance(payload.WorldNormal, V, reflected, sample.HalfVector, material.Roughness, F0);
-    // Monte Carlo estimator
-    float NdotL = glm::max(glm::dot(payload.WorldNormal, reflected), 0.0f);
-    if (ggx.PDF > 1e-6f && NdotL > 0.0f)
-        sample.Weight = brdf * (NdotL / ggx.PDF);
-    else
-        sample.Weight = glm::vec3(0.0f);
-    sample.PDF = ggx.PDF;
-    sample.IsDelta = false;
-	return sample;
+	glm::vec3 F0 = glm::mix(glm::vec3(0.04f), material.Albedo, material.Metallic);
+	return SampleGGX(ray, payload, material.Roughness, F0);
+}
+
+BSDFSample Renderer::SampleSpecularDielectric(const Ray& ray, const HitPayload& payload, const Material& material)
+{
+    constexpr float kMirrorThreshold = 0.001f;
+
+    if (material.Roughness < kMirrorThreshold)
+        return SampleDielectricMirror(ray, payload);
+
+    return SampleGGX(ray, payload, material.Roughness, glm::vec3(0.04f));
 }
 
 BSDFSample Renderer::SampleDielectric(Ray& ray, const HitPayload& payload, const Material& material)
@@ -138,6 +169,27 @@ BSDFSample Renderer::SampleMirror(const Ray& ray, const HitPayload& payload, con
     // Delta distribution
     sample.PDF = 1.0f;
     sample.IsDelta = true;
+    return sample;
+}
+
+BSDFSample Renderer::SampleDielectricMirror(const Ray& ray, const HitPayload& payload)
+{
+    BSDFSample sample;
+    glm::vec3 reflected = glm::normalize(glm::reflect(ray.Direction, payload.WorldNormal));
+    glm::vec3 V = -ray.Direction;
+
+    constexpr glm::vec3 F0(0.04f);
+
+    float cosTheta =glm::max(glm::dot(V, payload.WorldNormal), 0.0f);
+
+    glm::vec3 fresnel = BRDF::FresnelSchlick(cosTheta, F0);
+
+    sample.Direction = reflected;
+    sample.Weight = fresnel;
+
+    sample.PDF = 1.0f;
+    sample.IsDelta = true;
+
     return sample;
 }
 

@@ -38,7 +38,7 @@ namespace BRDF
     {
 		float a = roughness * roughness;
 		float phi = 2.0f * glm::pi<float>() * Xi.x;
-		float cosTheta = sqrt((1.0f - Xi.y) / (1.0f + (a * a - 1.0f) * Xi.y));
+		float cosTheta = sqrt((1.0f - Xi.y) / (1.0f + (a - 1.0f) * Xi.y));
         float sinTheta = sqrt(glm::max(0.0f, 1.0f - cosTheta * cosTheta));
         glm::vec3 H;
 		H.x = cos(phi) * sinTheta;
@@ -50,9 +50,6 @@ namespace BRDF
 		glm::vec3 sampleVec = tangent * H.x + bitangent * H.y + N * H.z;
         GGXSample sample;
 		sample.HalfVector = glm::normalize(sampleVec);
-		sample.Direction = glm::reflect(-V, sample.HalfVector);
-		sample.Direction = glm::normalize(sample.Direction);
-		sample.PDF = PDFGGX(N, V, sample.HalfVector, roughness);
         return sample;
     }
     glm::vec3 EvaluateCookTorrance(const glm::vec3& N, const glm::vec3& V, const glm::vec3& L, const glm::vec3& H, float roughness, const glm::vec3& F0)
@@ -97,4 +94,15 @@ namespace BRDF
 		return glm::normalize(local.x * tangent + local.y * bitangent + local.z * normal);
     }
 
+    float Average(const glm::vec3& value)
+    {
+		return (value.r + value.g + value.b) / 3.0f;
+    }
+
+    void ComputeLobeProbabilities(float specularWeight, float& diffuseProbability, float& specularProbability)
+    {
+		specularWeight = glm::clamp(specularWeight, 0.0f, 1.0f);
+        specularProbability = specularWeight;
+        diffuseProbability = 1.0f - specularWeight;
+	}
 }

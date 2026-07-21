@@ -8,5 +8,7 @@ struct BSDFSample
 
     float PDF = 0.0f;
 
+    float SelectionPDF = 1.0f;
+
     bool IsDelta = false;
 };

@@ -108,9 +108,12 @@ private:
 	BSDFSample SampleBSDF(Ray& ray, const HitPayload& payload, const Material& material);
 
 	BSDFSample SampleDiffuse(const Ray& ray, const HitPayload& payload, const Material& material);
+	BSDFSample SampleGGX(const Ray& ray, const HitPayload& payload, float roughness, const glm::vec3& F0);
 	BSDFSample SampleMetal(const Ray& ray, const HitPayload& payload, const Material& material);
+	BSDFSample SampleSpecularDielectric(const Ray& ray, const HitPayload& payload, const Material& material);
 	BSDFSample SampleDielectric(Ray& ray, const HitPayload& payload, const Material& material);
 	BSDFSample SampleMirror(const Ray& ray, const HitPayload& payload, const Material& material);
+	BSDFSample SampleDielectricMirror(const Ray& ray, const HitPayload& payload);
 
 	bool RussianRoulette(glm::vec3& throughput, int bounce);
 

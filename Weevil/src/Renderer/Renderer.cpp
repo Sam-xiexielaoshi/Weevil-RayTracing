@@ -88,7 +88,7 @@ glm::vec4 Renderer::Integrate(uint32_t x, uint32_t y)
 
 		BSDFSample sample = SampleBSDF(pathState.CurrentRay, payload, material);
 
-		pathState.PathThroughput *= sample.Weight;
+		pathState.PathThroughput *= sample.Weight/sample.SelectionPDF;
 		pathState.CurrentRay.Direction = sample.Direction;
 		OffsetRayOrigin(pathState.CurrentRay, payload);
 		if (!RussianRoulette(pathState.PathThroughput, i))

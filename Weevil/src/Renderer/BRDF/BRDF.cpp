@@ -62,6 +62,13 @@ namespace BRDF
         float denominator = 4.0f * NdotV * NdotL + 0.000001f;
         return (D * G * F) / denominator;
     }
+    GGXEvaluation EvaluateGGX(const glm::vec3& N, const glm::vec3& V, const glm::vec3& L, const glm::vec3& H, float roughness, const glm::vec3& F0)
+    {
+        GGXEvaluation eval;
+		eval.BRDF = EvaluateCookTorrance(N, V, L, H, roughness, F0);
+		eval.PDF = PDFGGX(N, V, H, roughness);
+        return eval;
+    }
     float PDFGGX(const glm::vec3& N, const glm::vec3& V, const glm::vec3& H, float roughness)
     {
 		float D = DistributionGGX(N, H, roughness);

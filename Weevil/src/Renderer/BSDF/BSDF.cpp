@@ -81,16 +81,15 @@ BSDFSample Renderer::SampleGGX(const Ray& ray, const HitPayload& payload, float 
         L = glm::normalize(glm::reflect(ray.Direction, N));
         H = glm::normalize(V + L);
     }
-	float pdf = BRDF::PDFGGX(N, V, H, roughness);
-	glm::vec3 brdf = BRDF::EvaluateCookTorrance(N, V, L, H, roughness, F0);
+	BRDF::GGXEvaluation eval = BRDF::EvaluateGGX(N, V, L, H, roughness, F0);
 	float NdotL = glm::max(glm::dot(N, L), 0.0f);
     sample.Direction = L;
     sample.HalfVector = H;
-	sample.PDF = pdf;
+	sample.PDF = eval.PDF;
 	sample.IsDelta = false;
-    if (pdf > 1e-6f)
+    if (eval.PDF > 1e-6f)
     {
-        sample.Weight = brdf * (NdotL / pdf);
+        sample.Weight = eval.BRDF * (NdotL / eval.PDF);
     }
     else
     {

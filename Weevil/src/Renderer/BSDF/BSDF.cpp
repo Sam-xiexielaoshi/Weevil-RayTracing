@@ -70,11 +70,20 @@ BSDFSample Renderer::SampleDiffuse(const Ray& ray,const HitPayload& payload, con
 BSDFSample Renderer::SampleGGX(const Ray& ray, const HitPayload& payload, float roughness, const glm::vec3& F0)
 {
     BSDFSample sample;
+    BRDF::GGXSample ggxSample;
 	glm::vec3 N = payload.WorldNormal;
     glm::vec3 V = -ray.Direction;
 	glm::vec2 Xi = glm::vec2(Walnut::Random::Float(), Walnut::Random::Float());
-	BRDF::GGXSample ggx = BRDF::ImportanceSampleGGX(Xi, N, V, roughness);
-    glm::vec3 H = ggx.HalfVector;
+    switch (m_Settings.GGXSamplingMode)
+    {
+    case GGXSampler::NDF:
+		ggxSample = BRDF::ImportanceSampleGGX(Xi, N, V, roughness);
+        break;
+	case GGXSampler::VNDF:
+        ggxSample = BRDF::ImportanceSampleGGXVNDF(Xi, N, V, roughness);
+		break;
+    }
+    glm::vec3 H = ggxSample.HalfVector;
 	glm::vec3 L = glm::normalize(glm::reflect(-V, H));
     if (glm::dot(N, L) <= 0.0f)
     {

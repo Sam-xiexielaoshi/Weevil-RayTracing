@@ -109,8 +109,23 @@ void RendererPanel::Draw(EditorContext& context)
 			1,
 			3,
 			20);
+		const char* ggxSamplers[]
+		{
+			"NDF",
+			"VNDF"
+		};
+		int currentSampler = static_cast<int>(renderer.GetSettings().GGXSamplingMode);
+		changed |= ImGui::Combo(
+			"GGX Sampler",
+			&currentSampler,
+			ggxSamplers,
+			IM_ARRAYSIZE(ggxSamplers)
+		);
 		if (changed)
+		{
+			renderer.GetSettings().GGXSamplingMode = static_cast<Renderer::GGXSampler>(currentSampler);
 			renderer.ResetFrameIndex();
+		}
 		ImGui::TreePop();
 	}
 	ImGui::Separator();

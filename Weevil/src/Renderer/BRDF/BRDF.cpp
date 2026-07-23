@@ -52,6 +52,10 @@ namespace BRDF
 		sample.HalfVector = glm::normalize(sampleVec);
         return sample;
     }
+    GGXSample ImportanceSampleGGXVNDF(const glm::vec2& Xi, const glm::vec3& N, const glm::vec3& V, float roughness)
+    {
+        return ImportanceSampleGGX(Xi, N, V, roughness);
+    }
     glm::vec3 EvaluateCookTorrance(const glm::vec3& N, const glm::vec3& V, const glm::vec3& L, const glm::vec3& H, float roughness, const glm::vec3& F0)
     {
         float D = DistributionGGX(N, H, roughness);
